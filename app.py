@@ -88,7 +88,16 @@ def build_graph(df):
         G.add_node(row[ville_col], type="Ville")
         G.add_edge(row[auteurs_fr_col], row[auteurs_copub_col])
         G.add_edge(row[auteurs_copub_col], row[ville_col])
-    pos = nx.spring_layout(G, k=0.3, iterations=20, seed=42)
+    
+    try:
+        import scipy  # vérifie si SciPy est dispo
+        pos = nx.spring_layout(G, k=0.3, iterations=20, seed=42)
+    except ImportError:
+        # fallback si SciPy n'est pas dispo
+        if len(G.nodes) > 50:
+            pos = nx.kamada_kawai_layout(G)
+        else:
+            pos = nx.circular_layout(G)
     return G, pos
 
 @st.cache_data
