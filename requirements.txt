@@ -6,3 +6,4 @@ wordcloud
 matplotlib
 numpy
 openpyxl
+scipy
