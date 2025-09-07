@@ -174,7 +174,7 @@ with tab2:
     st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Onglet 3 : Carte interactive Italie
+# Onglet 3 : Carte interactive Italie avec arcs
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
@@ -183,21 +183,47 @@ with tab3:
         st.warning("Aucune donnée valide pour tracer la carte.")
     else:
         inria_lat, inria_lon = 43.619, 7.071
+
         pubs_villes = df_map.groupby([ville_col]).agg({
             hal_col: "count", "Latitude": "first", "Longitude": "first"
         }).reset_index()
         max_pub = pubs_villes[hal_col].max()
 
         fig_map = go.Figure()
+
+        # Points pour chaque ville
         for _, row in pubs_villes.iterrows():
             fig_map.add_trace(go.Scattermapbox(
                 lon=[row["Longitude"]], lat=[row["Latitude"]], mode="markers",
                 marker=go.scattermapbox.Marker(
-                    size=8 + (row[hal_col]/max_pub)*25,
+                    size=8 + (row[hal_col] / max_pub) * 25,
                     color='green', opacity=0.7
                 ),
                 text=f"{row[ville_col]} : {row[hal_col]} pubs",
                 hoverinfo="text"
+            ))
+
+        # Arcs limités (max 200)
+        arcs = df_map.groupby([ville_col]).agg({
+            "Latitude": "first", "Longitude": "first", hal_col: "count"
+        }).reset_index().head(200)
+        max_arc = arcs[hal_col].max()
+
+        for _, row in arcs.iterrows():
+            lon0, lat0 = inria_lon, inria_lat
+            lon1, lat1 = row["Longitude"], row["Latitude"]
+
+            t = np.linspace(0, 1, 6)
+            lon_curve = lon0 * (1 - t) + lon1 * t
+            lat_curve = lat0 * (1 - t) + lat1 * t + 0.3 * np.sin(np.pi * t)
+
+            fig_map.add_trace(go.Scattermapbox(
+                lon=lon_curve, lat=lat_curve, mode="lines",
+                line=dict(width=0.5 + (row[hal_col] / max_arc) * 4,
+                          color=f"rgba(30,144,255,{0.3 + 0.7 * (row[hal_col] / max_arc)})"),
+                opacity=0.6, hoverinfo="text",
+                text=f"Inria ↔ {row[ville_col]} : {row[hal_col]} pubs",
+                showlegend=False
             ))
 
         # Point Inria
