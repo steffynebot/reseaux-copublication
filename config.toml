@@ -1,0 +1,15 @@
+[theme]
+# Couleur principale pour les titres, boutons et éléments interactifs
+primaryColor = "#0484fc"  
+
+# Couleur de fond principale de l'application
+backgroundColor = "#9ebfd2"  
+
+# Couleur de fond de la sidebar
+secondaryBackgroundColor = "#4cada3"  
+
+# Couleur du texte général
+textColor = "#0484fc"  
+
+# Police de l'application
+font = "sans serif"
