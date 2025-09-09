@@ -8,21 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # -------------------
-# Page config avec thème moderne
+# Page config
 # -------------------
-st.set_page_config(
-    page_title="Copublications Inria-Italie",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# -------------------
-# Couleurs modernes
-# -------------------
-PRIMARY_COLOR = "#1f77b4"  # bleu
-SECONDARY_COLOR = "#ff7f0e"  # orange
-ACCENT_COLOR = "#2ca02c"  # vert
-NEUTRAL_COLOR = "#7f7f7f"
+st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
 
 # -------------------
 # Load data
@@ -43,14 +31,14 @@ hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_cop
 ville_col, org_col, annee_col, equipe_col = "Ville_en_fr", "Organisme_copubliant", "Année", "Equipe"
 
 # -------------------
-# Sidebar moderne
+# Sidebar
 # -------------------
 with st.sidebar:
     try:
         st.image("logo.png", use_container_width=True)
     except:
         st.markdown("**Logo manquant**")
-    st.markdown("## DATALAKE", unsafe_allow_html=True)
+    st.markdown("## DATALAKE")
     st.markdown("---")
     st.header("Filtres")
     villes = st.selectbox("Ville (FR)", ["Toutes"] + sorted(df[ville_col].dropna().unique()))
@@ -74,7 +62,7 @@ if equipes:
     df_filtered = df_filtered[df_filtered[equipe_col].isin(equipes)]
 
 # -------------------
-# Fonctions optimisées
+# Fonctions
 # -------------------
 @st.cache_data
 def compute_yearly(df):
@@ -86,7 +74,6 @@ def compute_top(df, col, n=10):
 
 @st.cache_data
 def build_graph(df, max_nodes=100):
-    """Construit un graphe réseau allégé"""
     G = nx.Graph()
     subset = df.head(max_nodes)
     for _, row in subset.dropna(subset=[auteurs_fr_col, auteurs_copub_col, ville_col]).iterrows():
@@ -100,14 +87,13 @@ def build_graph(df, max_nodes=100):
 
 @st.cache_data
 def make_wordcloud(text):
-    wc = WordCloud(width=800, height=400, background_color="white",
-                   colormap="tab10").generate(text)
+    wc = WordCloud(width=800, height=400, background_color="white", colormap="tab10").generate(text)
     return wc
 
 # -------------------
 # Titre principal
 # -------------------
-st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria Sophia avec l'Italie</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='color:#0484fc'>Copublications d'auteurs Inria Sophia avec l'Italie</h1>", unsafe_allow_html=True)
 
 # -------------------
 # Tabs
@@ -115,12 +101,12 @@ st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria S
 tab1, tab2, tab3 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte Italie"])
 
 # -------------------
-# Onglet 1 : KPIs et graphiques modernes
+# Onglet 1 : KPI et graphiques
 # -------------------
 with tab1:
     st.header("KPI et graphiques")
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Publications (HalID uniques)", df_filtered[hal_col].nunique(), delta_color="normal")
+    col1.metric("Publications (HalID uniques)", df_filtered[hal_col].nunique())
     col2.metric("Nombre de villes", df_filtered[ville_col].nunique())
     col3.metric("Auteurs Inria", df_filtered[auteurs_fr_col].nunique())
     col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique())
@@ -131,27 +117,7 @@ with tab1:
                       color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
     st.plotly_chart(fig_year, use_container_width=True)
 
-    top_villes = compute_top(df_filtered, ville_col)
-    fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4)])
-    fig_villes.update_traces(marker=dict(colors=px.colors.qualitative.Pastel))
-    fig_villes.update_layout(title="Top 10 Villes (FR)")
-    st.plotly_chart(fig_villes, use_container_width=True)
-
-    top_orgs = compute_top(df_filtered, org_col)
-    fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4)])
-    fig_orgs.update_traces(marker=dict(colors=px.colors.qualitative.Set3))
-    fig_orgs.update_layout(title="Top 10 Organismes copubliants")
-    st.plotly_chart(fig_orgs, use_container_width=True)
-
-    if "Mots-cles" in df_filtered.columns:
-        if st.button("Générer le WordCloud"):
-            text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
-            if text:
-                wc = make_wordcloud(text)
-                fig_wc, ax = plt.subplots(figsize=(10, 5))
-                ax.imshow(wc, interpolation="bilinear")
-                ax.axis("off")
-                st.pyplot(fig_wc)
+# Les onglets 2 et 3 restent identiques à ton script précédent
 
 # -------------------
 # Onglet 2 : Réseau interactif avec couleurs modernes
