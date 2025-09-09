@@ -13,6 +13,14 @@ import numpy as np
 st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
 
 # -------------------
+# Couleurs modernes
+# -------------------
+PRIMARY_COLOR = "#0484fc"   # titres, boutons
+SECONDARY_COLOR = "#faa48a" # copubliants
+ACCENT_COLOR = "#4cada3"    # villes
+NEUTRAL_COLOR = "#9ebfd2"   # edges ou éléments neutres
+
+# -------------------
 # Load data
 # -------------------
 @st.cache_data
@@ -93,7 +101,7 @@ def make_wordcloud(text):
 # -------------------
 # Titre principal
 # -------------------
-st.markdown("<h1 style='color:#0484fc'>Copublications d'auteurs Inria Sophia avec l'Italie</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria Sophia avec l'Italie</h1>", unsafe_allow_html=True)
 
 # -------------------
 # Tabs
@@ -117,10 +125,30 @@ with tab1:
                       color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
     st.plotly_chart(fig_year, use_container_width=True)
 
-# Les onglets 2 et 3 restent identiques à ton script précédent
+    top_villes = compute_top(df_filtered, ville_col)
+    fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4)])
+    fig_villes.update_traces(marker=dict(colors=px.colors.qualitative.Pastel))
+    fig_villes.update_layout(title="Top 10 Villes (FR)")
+    st.plotly_chart(fig_villes, use_container_width=True)
+
+    top_orgs = compute_top(df_filtered, org_col)
+    fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4)])
+    fig_orgs.update_traces(marker=dict(colors=px.colors.qualitative.Set3))
+    fig_orgs.update_layout(title="Top 10 Organismes copubliants")
+    st.plotly_chart(fig_orgs, use_container_width=True)
+
+    if "Mots-cles" in df_filtered.columns:
+        if st.button("Générer le WordCloud"):
+            text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
+            if text:
+                wc = make_wordcloud(text)
+                fig_wc, ax = plt.subplots(figsize=(10, 5))
+                ax.imshow(wc, interpolation="bilinear")
+                ax.axis("off")
+                st.pyplot(fig_wc)
 
 # -------------------
-# Onglet 2 : Réseau interactif avec couleurs modernes
+# Onglet 2 : Réseau interactif
 # -------------------
 with tab2:
     st.header("Réseau copublication")
@@ -134,7 +162,12 @@ with tab2:
         edge_x += [x0, x1, None]
         edge_y += [y0, y1, None]
 
-    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color=NEUTRAL_COLOR), hoverinfo="none", mode="lines")
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        line=dict(width=0.5, color=NEUTRAL_COLOR),
+        hoverinfo="none",
+        mode="lines"
+    )
 
     node_x, node_y, node_text, node_color = [], [], [], []
     color_map = {"Inria": PRIMARY_COLOR, "Copubliant": SECONDARY_COLOR, "Ville": ACCENT_COLOR}
@@ -217,3 +250,4 @@ with tab3:
             title="Carte des copublications Inria - Italie"
         )
         st.plotly_chart(fig_map, use_container_width=True)
+
