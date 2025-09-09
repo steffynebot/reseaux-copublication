@@ -8,9 +8,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # -------------------
-# Page config
+# Page config avec thème moderne
 # -------------------
-st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
+st.set_page_config(
+    page_title="Copublications Inria-Italie",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# -------------------
+# Couleurs modernes
+# -------------------
+PRIMARY_COLOR = "#1f77b4"  # bleu
+SECONDARY_COLOR = "#ff7f0e"  # orange
+ACCENT_COLOR = "#2ca02c"  # vert
+NEUTRAL_COLOR = "#7f7f7f"
 
 # -------------------
 # Load data
@@ -31,14 +43,14 @@ hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_cop
 ville_col, org_col, annee_col, equipe_col = "Ville_en_fr", "Organisme_copubliant", "Année", "Equipe"
 
 # -------------------
-# Sidebar
+# Sidebar moderne
 # -------------------
 with st.sidebar:
     try:
         st.image("logo.png", use_container_width=True)
     except:
         st.markdown("**Logo manquant**")
-    st.markdown("### DATALAKE")
+    st.markdown("## DATALAKE", unsafe_allow_html=True)
     st.markdown("---")
     st.header("Filtres")
     villes = st.selectbox("Ville (FR)", ["Toutes"] + sorted(df[ville_col].dropna().unique()))
@@ -46,7 +58,7 @@ with st.sidebar:
     annees = st.multiselect("Années", sorted(df[annee_col].dropna().unique()))
     equipes = st.multiselect("Équipes", sorted(df[equipe_col].dropna().unique()))
     st.markdown("---")
-    st.markdown("Proposé par **Andréa NEBOT**")
+    st.markdown("<p style='text-align:center'>Proposé par <b>Andréa NEBOT</b></p>", unsafe_allow_html=True)
 
 # -------------------
 # Filtrage
@@ -88,13 +100,14 @@ def build_graph(df, max_nodes=100):
 
 @st.cache_data
 def make_wordcloud(text):
-    wc = WordCloud(width=800, height=400, background_color="white").generate(text)
+    wc = WordCloud(width=800, height=400, background_color="white",
+                   colormap="tab10").generate(text)
     return wc
 
 # -------------------
 # Titre principal
 # -------------------
-st.title("Copublications d'auteurs Inria Sophia avec l'Italie")
+st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria Sophia avec l'Italie</h1>", unsafe_allow_html=True)
 
 # -------------------
 # Tabs
@@ -102,27 +115,31 @@ st.title("Copublications d'auteurs Inria Sophia avec l'Italie")
 tab1, tab2, tab3 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte Italie"])
 
 # -------------------
-# Onglet 1 : KPIs et graphiques
+# Onglet 1 : KPIs et graphiques modernes
 # -------------------
 with tab1:
     st.header("KPI et graphiques")
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Publications (HalID uniques)", df_filtered[hal_col].nunique())
+    col1.metric("Publications (HalID uniques)", df_filtered[hal_col].nunique(), delta_color="normal")
     col2.metric("Nombre de villes", df_filtered[ville_col].nunique())
     col3.metric("Auteurs Inria", df_filtered[auteurs_fr_col].nunique())
     col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique())
 
     pubs_year = compute_yearly(df_filtered)
-    fig_year = px.bar(pubs_year, x=annee_col, y=hal_col, title="Publications par année")
+    fig_year = px.bar(pubs_year, x=annee_col, y=hal_col,
+                      title="Publications par année",
+                      color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
     st.plotly_chart(fig_year, use_container_width=True)
 
     top_villes = compute_top(df_filtered, ville_col)
-    fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.5)])
+    fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4)])
+    fig_villes.update_traces(marker=dict(colors=px.colors.qualitative.Pastel))
     fig_villes.update_layout(title="Top 10 Villes (FR)")
     st.plotly_chart(fig_villes, use_container_width=True)
 
     top_orgs = compute_top(df_filtered, org_col)
-    fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.5)])
+    fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4)])
+    fig_orgs.update_traces(marker=dict(colors=px.colors.qualitative.Set3))
     fig_orgs.update_layout(title="Top 10 Organismes copubliants")
     st.plotly_chart(fig_orgs, use_container_width=True)
 
@@ -137,7 +154,7 @@ with tab1:
                 st.pyplot(fig_wc)
 
 # -------------------
-# Onglet 2 : Réseau interactif
+# Onglet 2 : Réseau interactif avec couleurs modernes
 # -------------------
 with tab2:
     st.header("Réseau copublication")
@@ -151,21 +168,21 @@ with tab2:
         edge_x += [x0, x1, None]
         edge_y += [y0, y1, None]
 
-    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color="#999"), hoverinfo="none", mode="lines")
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color=NEUTRAL_COLOR), hoverinfo="none", mode="lines")
 
     node_x, node_y, node_text, node_color = [], [], [], []
-    color_map = {"Inria": "#E74C3C", "Copubliant": "#3498DB", "Ville": "#2ECC71"}
+    color_map = {"Inria": PRIMARY_COLOR, "Copubliant": SECONDARY_COLOR, "Ville": ACCENT_COLOR}
     for node in G.nodes():
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
         node_text.append(node)
-        node_color.append(color_map.get(G.nodes[node]["type"], "#95A5A6"))
+        node_color.append(color_map.get(G.nodes[node]["type"], NEUTRAL_COLOR))
 
     node_trace = go.Scatter(
         x=node_x, y=node_y, mode="markers+text",
         text=node_text, hoverinfo="text",
-        marker=dict(color=node_color, size=12, line_width=2)
+        marker=dict(color=node_color, size=14, line_width=2)
     )
 
     fig_net = go.Figure(data=[edge_trace, node_trace],
@@ -174,7 +191,7 @@ with tab2:
     st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Onglet 3 : Carte interactive Italie avec arcs
+# Onglet 3 : Carte interactive Italie
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
@@ -183,27 +200,24 @@ with tab3:
         st.warning("Aucune donnée valide pour tracer la carte.")
     else:
         inria_lat, inria_lon = 43.619, 7.071
-
         pubs_villes = df_map.groupby([ville_col]).agg({
             hal_col: "count", "Latitude": "first", "Longitude": "first"
         }).reset_index()
         max_pub = pubs_villes[hal_col].max()
-
         fig_map = go.Figure()
 
-        # Points pour chaque ville
         for _, row in pubs_villes.iterrows():
             fig_map.add_trace(go.Scattermapbox(
                 lon=[row["Longitude"]], lat=[row["Latitude"]], mode="markers",
                 marker=go.scattermapbox.Marker(
                     size=8 + (row[hal_col] / max_pub) * 25,
-                    color='green', opacity=0.7
+                    color=ACCENT_COLOR, opacity=0.7
                 ),
                 text=f"{row[ville_col]} : {row[hal_col]} pubs",
                 hoverinfo="text"
             ))
 
-        # Arcs limités (max 200)
+        # Arcs limités
         arcs = df_map.groupby([ville_col]).agg({
             "Latitude": "first", "Longitude": "first", hal_col: "count"
         }).reset_index().head(200)
@@ -212,11 +226,9 @@ with tab3:
         for _, row in arcs.iterrows():
             lon0, lat0 = inria_lon, inria_lat
             lon1, lat1 = row["Longitude"], row["Latitude"]
-
             t = np.linspace(0, 1, 6)
             lon_curve = lon0 * (1 - t) + lon1 * t
             lat_curve = lat0 * (1 - t) + lat1 * t + 0.3 * np.sin(np.pi * t)
-
             fig_map.add_trace(go.Scattermapbox(
                 lon=lon_curve, lat=lat_curve, mode="lines",
                 line=dict(width=0.5 + (row[hal_col] / max_arc) * 4,
@@ -229,7 +241,7 @@ with tab3:
         # Point Inria
         fig_map.add_trace(go.Scattermapbox(
             lon=[inria_lon], lat=[inria_lat],
-            mode="markers", marker=dict(size=15, color="red", symbol="star"),
+            mode="markers", marker=dict(size=15, color=PRIMARY_COLOR, symbol="star"),
             text="Inria Sophia Antipolis", hoverinfo="text"
         ))
 
