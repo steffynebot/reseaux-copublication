@@ -229,8 +229,11 @@ with tab2:
 # -------------------
 # Onglet 3 : Carte interactive avec pydeck
 # -------------------
-from streamlit_kepler.gl import keplergl_static
-import json
+from keplergl import KeplerGl
+import streamlit as st
+import pandas as pd
+import streamlit.components.v1 as components
+import tempfile
 
 with tab3:
     st.header("Carte copublications Italie")
@@ -253,7 +256,7 @@ with tab3:
                     {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
                 ]
 
-            # Construire le DataFrame pour Kepler
+            # Construire le DataFrame pour les arcs
             lines = []
             for center in centers:
                 for _, row in df_map.iterrows():
@@ -263,47 +266,25 @@ with tab3:
                         "end_lat": row['Latitude'],
                         "end_lon": row['Longitude'],
                         "ville": row[ville_col],
-                        "publications": 1  # tu peux remplacer par le nombre réel de pubs
+                        "publications": 1  # tu peux remplacer par le nombre réel
                     })
 
             df_lines = pd.DataFrame(lines)
 
-            # Configuration Kepler
-            config = {
-                "version": "v1",
-                "config": {
-                    "visState": {
-                        "layers": [{
-                            "id": "arc_layer",
-                            "type": "arc",
-                            "config": {
-                                "dataId": "lines",
-                                "label": "Copublications",
-                                "color": [255, 0, 0],
-                                "columns": {
-                                    "lat0": "start_lat",
-                                    "lng0": "start_lon",
-                                    "lat1": "end_lat",
-                                    "lng1": "end_lon"
-                                },
-                                "isVisible": True,
-                                "visConfig": {"thickness": 2, "colorRange": {"name": "Global Warming", "type": "sequential", "category": "Uber", "colors": ["#5A1846","#900C3F","#C70039","#E3611C","#F1920E","#FFC300"]}}
-                            }
-                        }],
-                        "interactionConfig": {
-                            "tooltip": {
-                                "fieldsToShow": {
-                                    "lines": ["ville","publications"]
-                                }
-                            }
-                        }
-                    },
-                    "mapState": {"latitude": 43.5, "longitude": 3.0, "zoom": 5}
-                }
-            }
+            # Créer la carte Kepler
+            map_1 = KeplerGl(height=600)
+            map_1.add_data(data=df_lines, name="lines")
 
-            # Afficher la carte
-            keplergl_static(data={"lines": df_lines}, config=config)
+            # Export temporaire en HTML
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
+                map_1.save_to_html(file_name=tmp_file.name)
+                tmp_file_path = tmp_file.name
+
+            # Afficher dans Streamlit
+            with open(tmp_file_path, "r", encoding="utf-8") as f:
+                html = f.read()
+            components.html(html, height=600)
+
 # -------------------
 # Onglet 4 : Contact
 # -------------------
