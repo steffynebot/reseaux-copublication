@@ -6,5 +6,4 @@ wordcloud
 matplotlib
 numpy
 openpyxl
-scipy
 streamlit-kepler.gl
