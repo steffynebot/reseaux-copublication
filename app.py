@@ -229,6 +229,9 @@ with tab2:
 # -------------------
 # Onglet 3 : Carte interactive avec pydeck
 # -------------------
+from streamlit_kepler.gl import keplergl_static
+import json
+
 with tab3:
     st.header("Carte copublications Italie")
     if st.button("Générer la carte"):
@@ -250,43 +253,57 @@ with tab3:
                     {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
                 ]
 
-            arcs = []
+            # Construire le DataFrame pour Kepler
+            lines = []
             for center in centers:
                 for _, row in df_map.iterrows():
-                    arcs.append({
-                        'source': [center['lon'], center['lat']],
-                        'target': [row['Longitude'], row['Latitude']],
-                        'weight': 1
+                    lines.append({
+                        "start_lat": center['lat'],
+                        "start_lon": center['lon'],
+                        "end_lat": row['Latitude'],
+                        "end_lon": row['Longitude'],
+                        "ville": row[ville_col],
+                        "publications": 1  # tu peux remplacer par le nombre réel de pubs
                     })
 
-            arc_layer = pdk.Layer(
-                'ArcLayer',
-                arcs,
-                get_source_position='source',
-                get_target_position='target',
-                get_source_color=[255, 0, 0],
-                get_target_color=[0, 0, 255],
-                get_width='weight',
-                width_scale=10,
-                pickable=True
-            )
+            df_lines = pd.DataFrame(lines)
 
-            view_state = pdk.ViewState(
-                latitude=43.5,
-                longitude=3.0,
-                zoom=5,
-                pitch=45,
-                bearing=0
-            )
+            # Configuration Kepler
+            config = {
+                "version": "v1",
+                "config": {
+                    "visState": {
+                        "layers": [{
+                            "id": "arc_layer",
+                            "type": "arc",
+                            "config": {
+                                "dataId": "lines",
+                                "label": "Copublications",
+                                "color": [255, 0, 0],
+                                "columns": {
+                                    "lat0": "start_lat",
+                                    "lng0": "start_lon",
+                                    "lat1": "end_lat",
+                                    "lng1": "end_lon"
+                                },
+                                "isVisible": True,
+                                "visConfig": {"thickness": 2, "colorRange": {"name": "Global Warming", "type": "sequential", "category": "Uber", "colors": ["#5A1846","#900C3F","#C70039","#E3611C","#F1920E","#FFC300"]}}
+                            }
+                        }],
+                        "interactionConfig": {
+                            "tooltip": {
+                                "fieldsToShow": {
+                                    "lines": ["ville","publications"]
+                                }
+                            }
+                        }
+                    },
+                    "mapState": {"latitude": 43.5, "longitude": 3.0, "zoom": 5}
+                }
+            }
 
-            deck = pdk.Deck(
-                layers=[arc_layer],
-                initial_view_state=view_state,
-                map_style='carto-positron'
-            )
-
-            st.pydeck_chart(deck)
-
+            # Afficher la carte
+            keplergl_static(data={"lines": df_lines}, config=config)
 # -------------------
 # Onglet 4 : Contact
 # -------------------
