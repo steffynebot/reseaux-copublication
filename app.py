@@ -232,7 +232,7 @@ with tab2:
 # Onglet 3 : Carte interactive Monde
 # -------------------
 with tab3:
-    st.header("Carte interactive Monde copublications")
+    st.header("Carte copublications Italie")
     if st.button("Générer la carte"):
         df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
         if df_map.empty:
@@ -309,6 +309,7 @@ with tab3:
                 paper_bgcolor=BACKGROUND_COLOR
             )
             st.plotly_chart(fig_map, use_container_width=True)
+
 
 # -------------------
 # Onglet 4 : Contact
