@@ -6,11 +6,12 @@ import networkx as nx
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import numpy as np
+import pydeck as pdk
 
 # -------------------
 # Page config
 # -------------------
-st.set_page_config(page_title="Copublications centres Inria (Bordeaux et Sophia)", layout="wide")
+st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
 
 # -------------------
 # Détection du thème actuel
@@ -126,12 +127,12 @@ def make_wordcloud(text):
 # -------------------
 # Titre principal
 # -------------------
-st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (Sophia & Bordeaux) avec le reste du monde</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (Sophia & Bordeaux) avec l'Italie</h1>", unsafe_allow_html=True)
 
 # -------------------
 # Tabs
 # -------------------
-tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
+tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte Italie", "Contact"])
 
 # -------------------
 # Onglet 1 : KPI et graphiques
@@ -144,7 +145,6 @@ with tab1:
     col3.metric("Auteurs Inria", df_filtered[auteurs_fr_col].nunique())
     col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique())
 
-    # KPI par centre
     if not df_filtered.empty:
         pubs_centre = df_filtered.groupby(centre_col)[hal_col].nunique().reset_index()
         st.subheader("📍 Publications par centre")
@@ -152,7 +152,6 @@ with tab1:
         for i, row in pubs_centre.iterrows():
             cols[i].metric(row[centre_col], row[hal_col])
 
-    # Graphique publications par année
     pubs_year = compute_yearly(df_filtered)
     fig_year = px.bar(pubs_year, x=annee_col, y=hal_col, title="Publications par année",
                       color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
@@ -172,7 +171,6 @@ with tab1:
     fig_orgs.update_layout(title="TOP 10 des organismes copubliants")
     st.plotly_chart(fig_orgs, use_container_width=True)
 
-    # WordCloud
     if "Mots-cles" in df_filtered.columns:
         if st.button("Générer le WordCloud"):
             text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
@@ -229,7 +227,7 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Onglet 3 : Carte interactive Monde
+# Onglet 3 : Carte interactive avec pydeck
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
@@ -238,78 +236,56 @@ with tab3:
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
-            # Définir les centres
+            # Coordonnées des centres
             centers = []
-            if centres:  # filtre appliqué
+            if centres:
                 for c in centres:
                     if c.lower() == "bordeaux":
                         centers.append({"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667})
                     elif c.lower() == "sophia":
                         centers.append({"name": "Sophia", "lat": 43.6200, "lon": 7.0500})
-            else:  # aucun filtre → les deux centres
+            else:
                 centers = [
                     {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
                     {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
                 ]
 
-            # Préparer les points des villes
-            pubs_villes = df_map.groupby([ville_col]).agg({
-                hal_col: "count", "Latitude": "first", "Longitude": "first"
-            }).reset_index()
-            max_pub = pubs_villes[hal_col].max()
-            fig_map = go.Figure()
-
-            # Tracer les villes
-            for _, row in pubs_villes.iterrows():
-                fig_map.add_trace(go.Scattermapbox(
-                    lon=[row["Longitude"]], lat=[row["Latitude"]], mode="markers",
-                    marker=go.scattermapbox.Marker(
-                        size=8 + (row[hal_col] / max_pub) * 25,
-                        color=ACCENT_COLOR, opacity=0.7
-                    ),
-                    text=f"{row[ville_col]} : {row[hal_col]} pubs",
-                    hoverinfo="text"
-                ))
-
-            # Tracer les arcs depuis chaque centre
+            arcs = []
             for center in centers:
-                arcs = df_map.groupby([ville_col]).agg({
-                    "Latitude": "first", "Longitude": "first", hal_col: "count"
-                }).reset_index().head(100)
-                max_arc = arcs[hal_col].max()
+                for _, row in df_map.iterrows():
+                    arcs.append({
+                        'source': [center['lon'], center['lat']],
+                        'target': [row['Longitude'], row['Latitude']],
+                        'weight': 1
+                    })
 
-                for _, row in arcs.iterrows():
-                    lon0, lat0 = center["lon"], center["lat"]
-                    lon1, lat1 = row["Longitude"], row["Latitude"]
-                    t = np.linspace(0, 1, 6)
-                    lon_curve = lon0 * (1 - t) + lon1 * t
-                    lat_curve = lat0 * (1 - t) + lat1 * t + 0.3 * np.sin(np.pi * t)
-                    fig_map.add_trace(go.Scattermapbox(
-                        lon=lon_curve, lat=lat_curve, mode="lines",
-                        line=dict(width=0.5 + (row[hal_col] / max_arc) * 4,
-                                  color=f"rgba(30,144,255,{0.3 + 0.7 * (row[hal_col] / max_arc)})"),
-                        opacity=0.6, hoverinfo="text",
-                        text=f"{center['name']} ↔ {row[ville_col]} : {row[hal_col]} pubs",
-                        showlegend=False
-                    ))
-
-                # Ajouter le centre sur la carte
-                fig_map.add_trace(go.Scattermapbox(
-                    lon=[center["lon"]], lat=[center["lat"]],
-                    mode="markers", marker=dict(size=15, color=PRIMARY_COLOR, symbol="star"),
-                    text=center["name"], hoverinfo="text"
-                ))
-
-            fig_map.update_layout(
-                mapbox=dict(style="carto-positron" if not is_dark else "carto-darkmatter",
-                            center=dict(lat=43.5, lon=3.0), zoom=5),  # centrer sur France/Italie
-                margin=dict(l=0, r=0, t=50, b=0),
-                title="TOP 10 des villes copubliantes",
-                plot_bgcolor=BACKGROUND_COLOR,
-                paper_bgcolor=BACKGROUND_COLOR
+            arc_layer = pdk.Layer(
+                'ArcLayer',
+                arcs,
+                get_source_position='source',
+                get_target_position='target',
+                get_source_color=[255, 0, 0],
+                get_target_color=[0, 0, 255],
+                get_width='weight',
+                width_scale=10,
+                pickable=True
             )
-            st.plotly_chart(fig_map, use_container_width=True)
 
+            view_state = pdk.ViewState(
+                latitude=43.5,
+                longitude=3.0,
+                zoom=5,
+                pitch=45,
+                bearing=0
+            )
+
+            deck = pdk.Deck(
+                layers=[arc_layer],
+                initial_view_state=view_state,
+                map_style='carto-positron'
+            )
+
+            st.pydeck_chart(deck)
 
 # -------------------
 # Onglet 4 : Contact
@@ -337,4 +313,3 @@ with tab4:
                 st.error("⚠️ Merci de remplir tous les champs.")
             else:
                 st.success(f"Merci {nom} ! Votre message a bien été envoyé ✅")
-
