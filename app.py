@@ -96,16 +96,16 @@ if equipes:
 # -------------------
 # Fonctions
 # -------------------
-@st.cache_data
+@st.cache_data(ttl=300)
 def compute_yearly(df):
     return df.groupby(annee_col)[hal_col].nunique().reset_index()
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def compute_top(df, col, n=10):
     return df[col].value_counts().nlargest(n)
 
-@st.cache_data
-def build_graph(df, max_nodes=100):
+@st.cache_data(ttl=300)
+def build_graph(df, max_nodes=200):
     G = nx.Graph()
     subset = df.head(max_nodes)
     for _, row in subset.dropna(subset=[auteurs_fr_col, auteurs_copub_col, ville_col]).iterrows():
@@ -131,7 +131,7 @@ st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (
 # -------------------
 # Tabs
 # -------------------
-tab1, tab2, tab3 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte Italie"])
+tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte Italie", "Contact"])
 
 # -------------------
 # Onglet 1 : KPI et graphiques
@@ -143,6 +143,14 @@ with tab1:
     col2.metric("Nombre de villes", df_filtered[ville_col].nunique())
     col3.metric("Auteurs Inria", df_filtered[auteurs_fr_col].nunique())
     col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique())
+
+    # KPI par centre
+    if not df_filtered.empty:
+        pubs_centre = df_filtered.groupby(centre_col)[hal_col].nunique().reset_index()
+        st.subheader("📍 Publications par centre")
+        cols = st.columns(len(pubs_centre))
+        for i, row in pubs_centre.iterrows():
+            cols[i].metric(row[centre_col], row[hal_col])
 
     pubs_year = compute_yearly(df_filtered)
     fig_year = px.bar(pubs_year, x=annee_col, y=hal_col, title="Publications par année",
@@ -242,7 +250,7 @@ with tab3:
 
         arcs = df_map.groupby([ville_col]).agg({
             "Latitude": "first", "Longitude": "first", hal_col: "count"
-        }).reset_index().head(200)
+        }).reset_index().head(100)  # limite pour perf
         max_arc = arcs[hal_col].max()
 
         for _, row in arcs.iterrows():
@@ -275,3 +283,31 @@ with tab3:
             paper_bgcolor=BACKGROUND_COLOR
         )
         st.plotly_chart(fig_map, use_container_width=True)
+
+# -------------------
+# Onglet 4 : Contact
+# -------------------
+with tab4:
+    st.header("À propos de nous")
+    st.markdown("""
+    Le groupe **Datalake**, créé en 2022, travaille à rendre possible le croisement de données entre **HAL** et divers référentiels et sources externes ou internes,
+    de développer des outils et méthodes d’analyse et de prospection pour permettre à différents acteurs décisionnaires (**ADS, DPE, etc.**) ou scientifiques
+    de répondre à leurs préoccupations du moment.  
+    Il est constitué de **6 membres** aux profils de data scientistes, développeurs et documentalistes experts.
+    """)
+
+    st.markdown("---")
+    st.header("📬 Formulaire de contact")
+
+    with st.form("contact_form", clear_on_submit=True):
+        nom = st.text_input("Votre nom")
+        email = st.text_input("Votre email")
+        message = st.text_area("Votre message")
+        submitted = st.form_submit_button("Envoyer")
+
+        if submitted:
+            if not nom or not email or not message:
+                st.error("⚠️ Merci de remplir tous les champs.")
+            else:
+                # Ici tu pourrais stocker ou envoyer les infos (ex: via un backend / email)
+                st.success(f"Merci {nom} ! Votre message a bien été envoyé ✅")
