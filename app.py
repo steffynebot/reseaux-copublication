@@ -19,23 +19,6 @@ st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
 theme = st.get_option("theme.base")  # 'light' ou 'dark'
 is_dark = theme == "dark"
 
-# -------------------
-# Couleurs selon le mode
-# -------------------
-if is_dark:
-    PRIMARY_COLOR = "#83c9ff"
-    SECONDARY_COLOR = "#ffabab"
-    ACCENT_COLOR = "#7defa1"
-    NEUTRAL_COLOR = "#d5dae5"
-    BACKGROUND_COLOR = "#004280"
-    SIDEBAR_COLOR = "#0068c9"
-else:
-    PRIMARY_COLOR = "#0484fc"
-    SECONDARY_COLOR = "#faa48a"
-    ACCENT_COLOR = "#4cada3"
-    NEUTRAL_COLOR = "#9ebfd2"
-    BACKGROUND_COLOR = "#e4f5ff"
-    SIDEBAR_COLOR = "#c7ebff"
 
 # -------------------
 # Load data
