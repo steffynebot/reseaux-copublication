@@ -13,19 +13,37 @@ import numpy as np
 st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
 
 # -------------------
-# Couleurs modernes
+# Détection du thème actuel
 # -------------------
-PRIMARY_COLOR = "#0484fc"   # titres, boutons
-SECONDARY_COLOR = "#faa48a" # copubliants
-ACCENT_COLOR = "#4cada3"    # villes
-NEUTRAL_COLOR = "#9ebfd2"   # edges ou éléments neutres
+theme = st.get_option("theme.base")  # 'light' ou 'dark'
+is_dark = theme == "dark"
+
+# -------------------
+# Couleurs selon le mode
+# -------------------
+if is_dark:
+    PRIMARY_COLOR = "#83c9ff"
+    SECONDARY_COLOR = "#ffabab"
+    ACCENT_COLOR = "#7defa1"
+    NEUTRAL_COLOR = "#d5dae5"
+    BACKGROUND_COLOR = "#004280"
+    SIDEBAR_COLOR = "#0068c9"
+else:
+    PRIMARY_COLOR = "#0484fc"
+    SECONDARY_COLOR = "#faa48a"
+    ACCENT_COLOR = "#4cada3"
+    NEUTRAL_COLOR = "#9ebfd2"
+    BACKGROUND_COLOR = "#e4f5ff"
+    SIDEBAR_COLOR = "#c7ebff"
 
 # -------------------
 # Load data
 # -------------------
 @st.cache_data
-def load_data(path="italy_full_completed_cities_translated_with_coords.xlsx"):
-    df = pd.read_excel(path)
+def load_data():
+    df_sophia = pd.read_excel("Copubliants_par_auteur_Inria_Sophia_ville_final_long_lat.xlsx")
+    df_bordeaux = pd.read_excel("Copubliants_par_auteur_Inria_Bordeaux_ville_final_long_lat.xlsx")
+    df = pd.concat([df_sophia, df_bordeaux], ignore_index=True)
     df.columns = [str(c).strip().replace("\xa0", "").replace(" ", "_") for c in df.columns]
     return df
 
@@ -36,30 +54,36 @@ if df.empty:
 
 # Colonnes
 hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_copubliants"
-ville_col, org_col, annee_col, equipe_col = "Ville_en_fr", "Organisme_copubliant", "Année", "Equipe"
+ville_col, org_col, annee_col, equipe_col, centre_col = "Ville", "Organisme_copubliant", "Année", "Equipe", "Centre"
 
 # -------------------
 # Sidebar
 # -------------------
 with st.sidebar:
+    st.markdown(f"<div style='background-color:{SIDEBAR_COLOR};padding:10px;border-radius:0.5rem'>", unsafe_allow_html=True)
     try:
         st.image("logo.png", use_container_width=True)
     except:
         st.markdown("**Logo manquant**")
-    st.markdown("## DATALAKE")
     st.markdown("---")
     st.header("Filtres")
-    villes = st.selectbox("Ville (FR)", ["Toutes"] + sorted(df[ville_col].dropna().unique()))
+
+    centres = st.multiselect("Centre", sorted(df[centre_col].dropna().unique()))
+    villes = st.selectbox("Ville", ["Toutes"] + sorted(df[ville_col].dropna().unique()))
     organismes = st.multiselect("Organismes copubliants", sorted(df[org_col].dropna().unique()))
     annees = st.multiselect("Années", sorted(df[annee_col].dropna().unique()))
     equipes = st.multiselect("Équipes", sorted(df[equipe_col].dropna().unique()))
+
     st.markdown("---")
-    st.markdown("<p style='text-align:center'>Proposé par <b>Andréa NEBOT</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='text-align:center;color:{PRIMARY_COLOR}'>Proposé par <b>Andréa NEBOT</b></p>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # -------------------
 # Filtrage
 # -------------------
 df_filtered = df.copy()
+if centres:
+    df_filtered = df_filtered[df_filtered[centre_col].isin(centres)]
 if villes != "Toutes":
     df_filtered = df_filtered[df_filtered[ville_col] == villes]
 if organismes:
@@ -95,13 +119,14 @@ def build_graph(df, max_nodes=100):
 
 @st.cache_data
 def make_wordcloud(text):
-    wc = WordCloud(width=800, height=400, background_color="white", colormap="tab10").generate(text)
+    wc = WordCloud(width=800, height=400, background_color="white" if not is_dark else "#004280",
+                   colormap="tab10").generate(text)
     return wc
 
 # -------------------
 # Titre principal
 # -------------------
-st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria Sophia avec l'Italie</h1>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (Sophia & Bordeaux) avec l'Italie</h1>", unsafe_allow_html=True)
 
 # -------------------
 # Tabs
@@ -120,21 +145,18 @@ with tab1:
     col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique())
 
     pubs_year = compute_yearly(df_filtered)
-    fig_year = px.bar(pubs_year, x=annee_col, y=hal_col,
-                      title="Publications par année",
+    fig_year = px.bar(pubs_year, x=annee_col, y=hal_col, title="Publications par année",
                       color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
     st.plotly_chart(fig_year, use_container_width=True)
 
     top_villes = compute_top(df_filtered, ville_col)
     fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4)])
-    fig_villes.update_traces(marker=dict(colors=px.colors.qualitative.Pastel))
-    fig_villes.update_layout(title="Top 10 Villes (FR)")
+    fig_villes.update_traces(marker=dict(colors=[ACCENT_COLOR]*len(top_villes)))
     st.plotly_chart(fig_villes, use_container_width=True)
 
     top_orgs = compute_top(df_filtered, org_col)
     fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4)])
-    fig_orgs.update_traces(marker=dict(colors=px.colors.qualitative.Set3))
-    fig_orgs.update_layout(title="Top 10 Organismes copubliants")
+    fig_orgs.update_traces(marker=dict(colors=[SECONDARY_COLOR]*len(top_orgs)))
     st.plotly_chart(fig_orgs, use_container_width=True)
 
     if "Mots-cles" in df_filtered.columns:
@@ -186,7 +208,9 @@ with tab2:
 
     fig_net = go.Figure(data=[edge_trace, node_trace],
                         layout=go.Layout(title="Réseau copublications interactif",
-                                         showlegend=False, hovermode="closest"))
+                                         showlegend=False, hovermode="closest",
+                                         plot_bgcolor=BACKGROUND_COLOR,
+                                         paper_bgcolor=BACKGROUND_COLOR))
     st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
@@ -216,7 +240,6 @@ with tab3:
                 hoverinfo="text"
             ))
 
-        # Arcs limités
         arcs = df_map.groupby([ville_col]).agg({
             "Latitude": "first", "Longitude": "first", hal_col: "count"
         }).reset_index().head(200)
@@ -237,7 +260,6 @@ with tab3:
                 showlegend=False
             ))
 
-        # Point Inria
         fig_map.add_trace(go.Scattermapbox(
             lon=[inria_lon], lat=[inria_lat],
             mode="markers", marker=dict(size=15, color=PRIMARY_COLOR, symbol="star"),
@@ -245,8 +267,11 @@ with tab3:
         ))
 
         fig_map.update_layout(
-            mapbox=dict(style="carto-positron", center=dict(lat=42.5, lon=12.5), zoom=5),
+            mapbox=dict(style="carto-positron" if not is_dark else "carto-darkmatter",
+                        center=dict(lat=42.5, lon=12.5), zoom=5),
             margin=dict(l=0, r=0, t=50, b=0),
-            title="Carte des copublications Inria - Italie"
+            title="Carte des copublications Inria - Italie",
+            plot_bgcolor=BACKGROUND_COLOR,
+            paper_bgcolor=BACKGROUND_COLOR
         )
         st.plotly_chart(fig_map, use_container_width=True)
