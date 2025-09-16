@@ -6,6 +6,9 @@ import networkx as nx
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import numpy as np
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # -------------------
 # Page config
@@ -35,6 +38,35 @@ else:
     NEUTRAL_COLOR = "#9ebfd2"
     BACKGROUND_COLOR = "#e4f5ff"
     SIDEBAR_COLOR = "#c7ebff"
+
+# -------------------
+# Fonction envoi mail
+# -------------------
+def envoyer_mail(nom, email, message):
+    sender = "ton_adresse_mail@inria.fr"  # à remplacer par une adresse expéditrice valide
+    receiver = "andrea.nebot@inria.fr"
+    subject = f"📩 Nouveau message depuis le dashboard (de {nom})"
+
+    body = f"""
+    Nom : {nom}
+    Email : {email}
+    Message :
+    {message}
+    """
+
+    msg = MIMEMultipart()
+    msg["From"] = sender
+    msg["To"] = receiver
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+
+    try:
+        with smtplib.SMTP("smtp.inria.fr", 587) as server:  # adapte serveur/port si besoin
+            server.sendmail(sender, receiver, msg.as_string())
+        return True
+    except Exception as e:
+        print("Erreur envoi mail:", e)
+        return False
 
 # -------------------
 # Load data
@@ -157,14 +189,16 @@ with tab1:
                       color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
     st.plotly_chart(fig_year, use_container_width=True)
 
+    # Top villes (couleurs variées)
     top_villes = compute_top(df_filtered, ville_col)
     fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4)])
-    fig_villes.update_traces(marker=dict(colors=[ACCENT_COLOR]*len(top_villes)))
+    fig_villes.update_traces(marker=dict(colors=px.colors.qualitative.Pastel))
     st.plotly_chart(fig_villes, use_container_width=True)
 
+    # Top organismes (couleurs variées)
     top_orgs = compute_top(df_filtered, org_col)
     fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4)])
-    fig_orgs.update_traces(marker=dict(colors=[SECONDARY_COLOR]*len(top_orgs)))
+    fig_orgs.update_traces(marker=dict(colors=px.colors.qualitative.Set3))
     st.plotly_chart(fig_orgs, use_container_width=True)
 
     if "Mots-cles" in df_filtered.columns:
@@ -178,125 +212,9 @@ with tab1:
                 st.pyplot(fig_wc)
 
 # -------------------
-# Onglet 2 : Réseau interactif
-# -------------------
-with tab2:
-    st.header("Réseau copublication")
-    G, pos = build_graph(df_filtered)
-    st.info(f"Réseau limité à {len(G.nodes)} nœuds.")
-
-    edge_x, edge_y = [], []
-    for edge in G.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_x += [x0, x1, None]
-        edge_y += [y0, y1, None]
-
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=0.5, color=NEUTRAL_COLOR),
-        hoverinfo="none",
-        mode="lines"
-    )
-
-    node_x, node_y, node_text, node_color = [], [], [], []
-    color_map = {"Inria": PRIMARY_COLOR, "Copubliant": SECONDARY_COLOR, "Ville": ACCENT_COLOR}
-    for node in G.nodes():
-        x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        node_text.append(node)
-        node_color.append(color_map.get(G.nodes[node]["type"], NEUTRAL_COLOR))
-
-    node_trace = go.Scatter(
-        x=node_x, y=node_y, mode="markers+text",
-        text=node_text, hoverinfo="text",
-        marker=dict(color=node_color, size=14, line_width=2)
-    )
-
-    fig_net = go.Figure(data=[edge_trace, node_trace],
-                        layout=go.Layout(title="Réseau copublications interactif",
-                                         showlegend=False, hovermode="closest",
-                                         plot_bgcolor=BACKGROUND_COLOR,
-                                         paper_bgcolor=BACKGROUND_COLOR))
-    st.plotly_chart(fig_net, use_container_width=True)
-
-# -------------------
-# Onglet 3 : Carte interactive Italie
-# -------------------
-with tab3:
-    st.header("Carte copublications Italie")
-    df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
-    if df_map.empty:
-        st.warning("Aucune donnée valide pour tracer la carte.")
-    else:
-        inria_lat, inria_lon = 43.619, 7.071
-        pubs_villes = df_map.groupby([ville_col]).agg({
-            hal_col: "count", "Latitude": "first", "Longitude": "first"
-        }).reset_index()
-        max_pub = pubs_villes[hal_col].max()
-        fig_map = go.Figure()
-
-        for _, row in pubs_villes.iterrows():
-            fig_map.add_trace(go.Scattermapbox(
-                lon=[row["Longitude"]], lat=[row["Latitude"]], mode="markers",
-                marker=go.scattermapbox.Marker(
-                    size=8 + (row[hal_col] / max_pub) * 25,
-                    color=ACCENT_COLOR, opacity=0.7
-                ),
-                text=f"{row[ville_col]} : {row[hal_col]} pubs",
-                hoverinfo="text"
-            ))
-
-        arcs = df_map.groupby([ville_col]).agg({
-            "Latitude": "first", "Longitude": "first", hal_col: "count"
-        }).reset_index().head(100)  # limite pour perf
-        max_arc = arcs[hal_col].max()
-
-        for _, row in arcs.iterrows():
-            lon0, lat0 = inria_lon, inria_lat
-            lon1, lat1 = row["Longitude"], row["Latitude"]
-            t = np.linspace(0, 1, 6)
-            lon_curve = lon0 * (1 - t) + lon1 * t
-            lat_curve = lat0 * (1 - t) + lat1 * t + 0.3 * np.sin(np.pi * t)
-            fig_map.add_trace(go.Scattermapbox(
-                lon=lon_curve, lat=lat_curve, mode="lines",
-                line=dict(width=0.5 + (row[hal_col] / max_arc) * 4,
-                          color=f"rgba(30,144,255,{0.3 + 0.7 * (row[hal_col] / max_arc)})"),
-                opacity=0.6, hoverinfo="text",
-                text=f"Inria ↔ {row[ville_col]} : {row[hal_col]} pubs",
-                showlegend=False
-            ))
-
-        fig_map.add_trace(go.Scattermapbox(
-            lon=[inria_lon], lat=[inria_lat],
-            mode="markers", marker=dict(size=15, color=PRIMARY_COLOR, symbol="star"),
-            text="Inria Sophia Antipolis", hoverinfo="text"
-        ))
-
-        fig_map.update_layout(
-            mapbox=dict(style="carto-positron" if not is_dark else "carto-darkmatter",
-                        center=dict(lat=42.5, lon=12.5), zoom=5),
-            margin=dict(l=0, r=0, t=50, b=0),
-            title="Carte des copublications Inria - Italie",
-            plot_bgcolor=BACKGROUND_COLOR,
-            paper_bgcolor=BACKGROUND_COLOR
-        )
-        st.plotly_chart(fig_map, use_container_width=True)
-
-# -------------------
 # Onglet 4 : Contact
 # -------------------
 with tab4:
-    st.header("À propos de nous")
-    st.markdown("""
-    Le groupe **Datalake**, créé en 2022, travaille à rendre possible le croisement de données entre **HAL** et divers référentiels et sources externes ou internes,
-    de développer des outils et méthodes d’analyse et de prospection pour permettre à différents acteurs décisionnaires (**ADS, DPE, etc.**) ou scientifiques
-    de répondre à leurs préoccupations du moment.  
-    Il est constitué de **6 membres** aux profils de data scientistes, développeurs et documentalistes experts.
-    """)
-
-    st.markdown("---")
     st.header("📬 Formulaire de contact")
 
     with st.form("contact_form", clear_on_submit=True):
@@ -309,5 +227,7 @@ with tab4:
             if not nom or not email or not message:
                 st.error("⚠️ Merci de remplir tous les champs.")
             else:
-                # Ici tu pourrais stocker ou envoyer les infos (ex: via un backend / email)
-                st.success(f"Merci {nom} ! Votre message a bien été envoyé ✅")
+                if envoyer_mail(nom, email, message):
+                    st.success(f"Merci {nom} ! Votre message a bien été envoyé ✅")
+                else:
+                    st.error("❌ Une erreur est survenue lors de l'envoi du message.")
