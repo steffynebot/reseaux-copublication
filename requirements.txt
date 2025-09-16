@@ -7,4 +7,4 @@ matplotlib
 numpy
 openpyxl
 scipy
-pydeck
+streamlit-kepler.gl
