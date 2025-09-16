@@ -10,7 +10,7 @@ import numpy as np
 # -------------------
 # Page config
 # -------------------
-st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
+st.set_page_config(page_title="Copublications centres Inria (Bordeaux et Sophia)", layout="wide")
 
 # -------------------
 # Détection du thème actuel
@@ -232,19 +232,34 @@ with tab2:
 # Onglet 3 : Carte interactive Monde
 # -------------------
 with tab3:
-    st.header("Carte copublications")
+    st.header("Carte interactive Monde copublications")
     if st.button("Générer la carte"):
         df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
-            inria_lat, inria_lon = 43.619, 7.071
+            # Définir les centres
+            centers = []
+            if centres:  # filtre appliqué
+                for c in centres:
+                    if c.lower() == "bordeaux":
+                        centers.append({"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667})
+                    elif c.lower() == "sophia":
+                        centers.append({"name": "Sophia", "lat": 43.6200, "lon": 7.0500})
+            else:  # aucun filtre → les deux centres
+                centers = [
+                    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
+                    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
+                ]
+
+            # Préparer les points des villes
             pubs_villes = df_map.groupby([ville_col]).agg({
                 hal_col: "count", "Latitude": "first", "Longitude": "first"
             }).reset_index()
             max_pub = pubs_villes[hal_col].max()
             fig_map = go.Figure()
 
+            # Tracer les villes
             for _, row in pubs_villes.iterrows():
                 fig_map.add_trace(go.Scattermapbox(
                     lon=[row["Longitude"]], lat=[row["Latitude"]], mode="markers",
@@ -256,35 +271,38 @@ with tab3:
                     hoverinfo="text"
                 ))
 
-            arcs = df_map.groupby([ville_col]).agg({
-                "Latitude": "first", "Longitude": "first", hal_col: "count"
-            }).reset_index().head(100)
-            max_arc = arcs[hal_col].max()
+            # Tracer les arcs depuis chaque centre
+            for center in centers:
+                arcs = df_map.groupby([ville_col]).agg({
+                    "Latitude": "first", "Longitude": "first", hal_col: "count"
+                }).reset_index().head(100)
+                max_arc = arcs[hal_col].max()
 
-            for _, row in arcs.iterrows():
-                lon0, lat0 = inria_lon, inria_lat
-                lon1, lat1 = row["Longitude"], row["Latitude"]
-                t = np.linspace(0, 1, 6)
-                lon_curve = lon0 * (1 - t) + lon1 * t
-                lat_curve = lat0 * (1 - t) + lat1 * t + 0.3 * np.sin(np.pi * t)
+                for _, row in arcs.iterrows():
+                    lon0, lat0 = center["lon"], center["lat"]
+                    lon1, lat1 = row["Longitude"], row["Latitude"]
+                    t = np.linspace(0, 1, 6)
+                    lon_curve = lon0 * (1 - t) + lon1 * t
+                    lat_curve = lat0 * (1 - t) + lat1 * t + 0.3 * np.sin(np.pi * t)
+                    fig_map.add_trace(go.Scattermapbox(
+                        lon=lon_curve, lat=lat_curve, mode="lines",
+                        line=dict(width=0.5 + (row[hal_col] / max_arc) * 4,
+                                  color=f"rgba(30,144,255,{0.3 + 0.7 * (row[hal_col] / max_arc)})"),
+                        opacity=0.6, hoverinfo="text",
+                        text=f"{center['name']} ↔ {row[ville_col]} : {row[hal_col]} pubs",
+                        showlegend=False
+                    ))
+
+                # Ajouter le centre sur la carte
                 fig_map.add_trace(go.Scattermapbox(
-                    lon=lon_curve, lat=lat_curve, mode="lines",
-                    line=dict(width=0.5 + (row[hal_col] / max_arc) * 4,
-                              color=f"rgba(30,144,255,{0.3 + 0.7 * (row[hal_col] / max_arc)})"),
-                    opacity=0.6, hoverinfo="text",
-                    text=f"Inria ↔ {row[ville_col]} : {row[hal_col]} pubs",
-                    showlegend=False
+                    lon=[center["lon"]], lat=[center["lat"]],
+                    mode="markers", marker=dict(size=15, color=PRIMARY_COLOR, symbol="star"),
+                    text=center["name"], hoverinfo="text"
                 ))
-
-            fig_map.add_trace(go.Scattermapbox(
-                lon=[inria_lon], lat=[inria_lat],
-                mode="markers", marker=dict(size=15, color=PRIMARY_COLOR, symbol="star"),
-                text="Inria Sophia Antipolis", hoverinfo="text"
-            ))
 
             fig_map.update_layout(
                 mapbox=dict(style="carto-positron" if not is_dark else "carto-darkmatter",
-                            center=dict(lat=42.5, lon=12.5), zoom=5),
+                            center=dict(lat=43.5, lon=3.0), zoom=5),  # centrer sur France/Italie
                 margin=dict(l=0, r=0, t=50, b=0),
                 title="TOP 10 des villes copubliantes",
                 plot_bgcolor=BACKGROUND_COLOR,
