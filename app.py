@@ -136,19 +136,30 @@ tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublica
 # -------------------
 # Onglet 1 : KPI et graphiques
 # -------------------
-# -------------------
-# Onglet 1 : KPI et graphiques
-# -------------------
 with tab1:
     st.header("KPI et graphiques 🚀")
-    
+
+    # Calculs de base
+    pubs_year = compute_yearly(df_filtered)
+    total_pubs = pubs_year[hal_col].sum()
+    total_villes = df_filtered[ville_col].nunique()
+    total_auteurs_inria = df_filtered[auteurs_fr_col].nunique()
+    total_auteurs_copub = df_filtered[auteurs_copub_col].nunique()
+
+    # Delta : variation par rapport à l'année précédente
+    if len(pubs_year) > 1:
+        delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2]
+    else:
+        delta_pubs = 0
+
     # KPI principaux
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Publications", df_filtered[hal_col].nunique(), delta=f"{df_filtered[hal_col].nunique()-df_filtered[hal_col].nunique().shift(1, fill_value=0)} 📈")
-    col2.metric("Villes", df_filtered[ville_col].nunique(), emoji="🏙️")
-    col3.metric("Auteurs Inria", df_filtered[auteurs_fr_col].nunique(), emoji="👩‍🔬")
-    col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique(), emoji="🤝")
+    col1.metric("Publications", total_pubs, delta=f"{delta_pubs} 📈" if delta_pubs >=0 else f"{delta_pubs} 📉")
+    col2.metric("Villes", total_villes, emoji="🏙️")
+    col3.metric("Auteurs Inria", total_auteurs_inria, emoji="👩‍🔬")
+    col4.metric("Auteurs copubliants", total_auteurs_copub, emoji="🤝")
 
+    # Publications par centre
     if not df_filtered.empty:
         pubs_centre = df_filtered.groupby(centre_col)[hal_col].nunique().reset_index()
         st.subheader("📍 Publications par centre")
@@ -157,8 +168,7 @@ with tab1:
         for i, row in pubs_centre.iterrows():
             cols[i].metric(row[centre_col], row[hal_col])
 
-    # Graphique publications par année
-    pubs_year = compute_yearly(df_filtered)
+    # Graphique : publications par année
     fig_year = px.bar(
         pubs_year,
         x=annee_col,
@@ -172,7 +182,7 @@ with tab1:
     fig_year.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_year, use_container_width=True)
 
-    # Top villes
+    # Graphique : Top villes
     top_villes = compute_top(df_filtered, ville_col)
     fig_villes = go.Figure(
         data=[go.Pie(
@@ -187,7 +197,7 @@ with tab1:
     fig_villes.update_layout(title="TOP 10 des villes copubliantes")
     st.plotly_chart(fig_villes, use_container_width=True)
 
-    # Top organismes
+    # Graphique : Top organismes
     top_orgs = compute_top(df_filtered, org_col)
     fig_orgs = go.Figure(
         data=[go.Pie(
