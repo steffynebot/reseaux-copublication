@@ -231,8 +231,8 @@ with tab3:
         else:
             # Définir les centres Inria avec leurs coordonnées et couleurs
             inria_centers = [
-                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255, 0, 0]},
-                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0, 0, 255]}
+                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [64, 255, 0]},
+                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0, 128, 200]}
             ]
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
