@@ -12,7 +12,7 @@ import pydeck as pdk
 # -------------------
 # Page config
 # -------------------
-st.set_page_config(page_title="Copublications Inria-Italie", layout="wide")
+st.set_page_config(page_title="Copublications Inria (centres Sophia et Bordeaux)", layout="wide")
 
 # -------------------
 # Détection du thème actuel
@@ -218,62 +218,57 @@ with tab2:
 
 import pydeck as pdk
 
+import pydeck as pdk
+import pandas as pd
+
 # -------------------
-# Onglet 3 : Carte interactive
+# Onglet 3 : Carte de chaleur
 # -------------------
 with tab3:
     st.header("Carte des copublications")
     if st.button("Générer la carte"):
-        # Filtrer les données pour les centres Inria sélectionnés
+        # Préparer les données
         df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
-            # Définir les centres Inria avec leurs coordonnées et couleurs
+            # Définir les centres Inria
             inria_centers = [
-                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [64, 255, 0]},
-                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0, 128, 200]}
+                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255, 0, 0]},
+                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0, 0, 255]}
             ]
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
-            # Préparer les arcs entre les centres Inria et les auteurs copubliants
-            arcs_data = []
-            for center in inria_centers:
-                for _, row in df_map.iterrows():
-                    arcs_data.append({
-                        "source_position": [center["lon"], center["lat"], 0],
-                        "target_position": [row["Longitude"], row["Latitude"], 0],
-                        "color": center["color"]
-                    })
+            # Préparer les données pour le HeatmapLayer
+            heatmap_data = []
+            for _, row in df_map.iterrows():
+                heatmap_data.append([row["Longitude"], row["Latitude"]])
 
-            # Créer le layer GreatCircleLayer
-            arcs_layer = pdk.Layer(
-                "GreatCircleLayer",
-                arcs_data,
-                get_stroke_width=2,
-                get_source_position="source_position",
-                get_target_position="target_position",
-                get_source_color="color",
-                get_target_color="color",
-                auto_highlight=True,
-                pickable=True
+            # Créer le HeatmapLayer
+            heatmap_layer = pdk.Layer(
+                "HeatmapLayer",
+                heatmap_data,
+                get_position=["lng", "lat"],
+                get_weight=1,
+                radius_pixels=30,
+                opacity=0.6,
+                threshold=0.03,
             )
 
             # Définir l'état de la vue initiale
             view_state = pdk.ViewState(
-                latitude=43.8,
-                longitude=7.0,
+                latitude=44.0,
+                longitude=6.0,
                 zoom=5,
                 pitch=45,
                 bearing=0
             )
 
-            # Créer la carte avec le layer
+            # Créer la carte avec le HeatmapLayer
             deck = pdk.Deck(
-                layers=[arcs_layer],
+                layers=[heatmap_layer],
                 initial_view_state=view_state,
-                tooltip={"text": "{from_name} → {to_name}"},
                 map_style=pdk.map_styles.CARTO_DARK
             )
 
