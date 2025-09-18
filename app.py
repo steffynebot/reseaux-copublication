@@ -267,19 +267,20 @@ with tab1:
                 ax.axis("off")
                 st.pyplot(fig_wc)
 
+
 # -------------------
-# Onglet 2 : Réseau copublication hiérarchique (layout manuel)
+# Onglet 2 : Réseau copublication hiérarchique
 # -------------------
 with tab2:
     st.header("Réseau copublication hiérarchique")
-
-    if st.button("Générer le réseau"):
+    
+    if st.button("Générer le réseau hiérarchique"):
         G = nx.DiGraph()
 
-        # Nombre de publications par Ville (HalID uniques)
+        # Nombre de publications par ville (HalID unique)
         pub_count = df_filtered.groupby("Ville")[hal_col].nunique().to_dict()
 
-        # Couleurs par niveau (adaptées à ton thème)
+        # Couleurs par niveau
         level_color = {
             "Centre": PRIMARY_COLOR,
             "Equipe": SECONDARY_COLOR,
@@ -306,24 +307,24 @@ with tab2:
                 if level == "Ville":
                     G.nodes[node]["count"] = pub_count.get(node, 1)
 
-            # Arêtes hiérarchiques
+            # Ajout des arêtes hiérarchiques
             G.add_edge(nodes["Centre"], nodes["Equipe"])
             G.add_edge(nodes["Equipe"], nodes["Auteur_FR"])
             G.add_edge(nodes["Auteur_FR"], nodes["Auteur_CP"])
             G.add_edge(nodes["Auteur_CP"], nodes["Pays"])
             G.add_edge(nodes["Pays"], nodes["Ville"])
 
-        # Layout hiérarchique manuel
+        # Création d'un layout hiérarchique manuel (arbre vertical)
         levels = ["Centre", "Equipe", "Auteur_FR", "Auteur_CP", "Pays", "Ville"]
-        y_positions = {level: -i*200 for i, level in enumerate(levels)}  # vertical spacing
-        x_offsets = defaultdict(int)
+        y_positions = {level: -i*200 for i, level in enumerate(levels)}  # position verticale
+        x_offsets = {level: 0 for level in levels}
         pos = {}
         for node in G.nodes():
             level = G.nodes[node]["type"]
             pos[node] = (x_offsets[level], y_positions[level])
-            x_offsets[level] += 200  # horizontal spacing
+            x_offsets[level] += 200  # espacement horizontal
 
-        # Arêtes
+        # Traces pour les arêtes
         edge_x, edge_y = [], []
         for source, target in G.edges():
             x0, y0 = pos[source]
@@ -338,15 +339,15 @@ with tab2:
             mode="lines"
         )
 
-        # Nœuds
+        # Traces pour les nœuds
         node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
         for node in G.nodes():
             x, y = pos[node]
             node_x.append(x)
             node_y.append(y)
             node_text.append(f"{node} ({G.nodes[node]['type']}) - pubs: {G.nodes[node]['count']}")
-            node_color.append(level_color.get(G.nodes[node]["type"], "#7f7f7f"))
-            node_size.append(10 + G.nodes[node]["count"]*2)  # taille proportionnelle
+            node_color.append(level_color[G.nodes[node]["type"]])
+            node_size.append(10 + G.nodes[node]["count"]*2)
 
         node_trace = go.Scatter(
             x=node_x, y=node_y,
@@ -358,17 +359,16 @@ with tab2:
         )
 
         # Figure
-        fig = go.Figure(data=[edge_trace, node_trace],
-                        layout=go.Layout(
-                            title="Réseau hiérarchique des copublications",
-                            showlegend=False,
-                            hovermode="closest",
-                            plot_bgcolor=BACKGROUND_COLOR,
-                            paper_bgcolor=BACKGROUND_COLOR
-                        ))
+        fig_net = go.Figure(data=[edge_trace, node_trace],
+                            layout=go.Layout(
+                                title="Réseau hiérarchique des copublications",
+                                showlegend=False,
+                                hovermode="closest",
+                                plot_bgcolor=BACKGROUND_COLOR,
+                                paper_bgcolor=BACKGROUND_COLOR
+                            ))
 
-        st.plotly_chart(fig, use_container_width=True)
-
+        st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
 # Onglet 3 : Carte interactive Heatmap
