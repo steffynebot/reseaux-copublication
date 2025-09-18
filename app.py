@@ -267,9 +267,8 @@ with tab1:
                 ax.axis("off")
                 st.pyplot(fig_wc)
 
-
 # -------------------
-# Onglet 2 : Réseau classique de copublication avec tes couleurs
+# Onglet 2 : Réseau classique de copublication avec légende et fond correct
 # -------------------
 with tab2:
     st.header("Réseau de copublication")
@@ -289,7 +288,7 @@ with tab2:
             G.add_node(row["Pays"], type="Pays")
             G.add_node(row[ville_col], type="Ville")
             
-            # Arêtes principales
+            # Arêtes
             G.add_edge(row[centre_col], row[equipe_col])
             G.add_edge(row[equipe_col], row[auteurs_fr_col])
             G.add_edge(row[auteurs_fr_col], row[auteurs_copub_col])
@@ -311,11 +310,11 @@ with tab2:
             x=edge_x, y=edge_y,
             line=dict(width=0.5, color="#888"),
             hoverinfo="none",
-            mode="lines"
+            mode="lines",
+            showlegend=False
         )
 
-        # Nœuds
-        node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
+        # Nœuds par type pour légende
         color_map = {
             "Centre": "#1f77b4",
             "Equipe": "#ff7f0e",
@@ -326,34 +325,42 @@ with tab2:
         }
 
         node_degree = dict(G.degree())
-        for node in G.nodes():
-            x, y = pos[node]
-            node_x.append(x)
-            node_y.append(y)
-            node_text.append(f"{node} ({G.nodes[node]['type']}) - {node_degree[node]} copubs")
-            node_color.append(color_map.get(G.nodes[node]["type"], "#7f7f7f"))
-            node_size.append(10 + node_degree[node]*2)
 
-        node_trace = go.Scatter(
-            x=node_x, y=node_y,
-            mode="markers+text",
-            text=[node for node in G.nodes()],
-            hovertext=node_text,
-            hoverinfo="text",
-            marker=dict(color=node_color, size=node_size, line_width=2)
-        )
+        node_traces = []
+        for node_type, color in color_map.items():
+            node_x, node_y, node_text, node_size = [], [], [], []
+            for node in G.nodes():
+                if G.nodes[node]["type"] == node_type:
+                    x, y = pos[node]
+                    node_x.append(x)
+                    node_y.append(y)
+                    node_text.append(f"{node} ({node_type}) - {node_degree[node]} copubs")
+                    node_size.append(10 + node_degree[node]*2)
+            if node_x:  # créer la trace seulement si nodes existants
+                node_traces.append(
+                    go.Scatter(
+                        x=node_x, y=node_y,
+                        mode="markers",
+                        name=node_type,
+                        hovertext=node_text,
+                        hoverinfo="text",
+                        marker=dict(color=color, size=node_size, line_width=2)
+                    )
+                )
 
         # Figure
-        fig_net = go.Figure(data=[edge_trace, node_trace],
+        fig_net = go.Figure(data=[edge_trace] + node_traces,
                              layout=go.Layout(
                                  title="Réseau des copublications",
-                                 showlegend=False,
+                                 showlegend=True,
+                                 legend=dict(title="Type de nœud"),
                                  hovermode="closest",
-                                 plot_bgcolor=BACKGROUND_COLOR,
-                                 paper_bgcolor=BACKGROUND_COLOR
+                                 plot_bgcolor="#ffffff",  # fond blanc
+                                 paper_bgcolor="#ffffff"
                              ))
 
         st.plotly_chart(fig_net, use_container_width=True)
+
 
 # -------------------
 # Onglet 3 : Carte interactive Heatmap
