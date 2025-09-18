@@ -244,6 +244,45 @@ def make_arc(lat1, lon1, lat2, lon2, n_points=20, curve_height=0.5):
     curve_height : facteur d'arrondi (0 = ligne droite, >0 = plus arrondi)
     """
     lats = np.linspace(lat1, lat2, n_points)
+    
+import math
+
+def make_arc(lat1, lon1, lat2, lon2, n_points=30, curve_height=0.5):
+    """
+    Retourne (lats, lons) d'un arc arrondi reliant (lat1, lon1) à (lat2, lon2).
+    curve_height : proportion de la "hauteur" de la courbe (0 = droite, >0 = plus arrondi).
+    """
+    # points linéaires de base
+    t = np.linspace(0, 1, n_points)
+    lats = lat1 + (lat2 - lat1) * t
+    lons = lon1 + (lon2 - lon1) * t
+
+    # vecteur direction
+    dx = lon2 - lon1
+    dy = lat2 - lat1
+
+    # vecteur perpendiculaire normalisé
+    perp_x = -dy
+    perp_y = dx
+    norm = math.hypot(perp_x, perp_y)
+    if norm == 0:
+        perp_x, perp_y = 0, 0
+    else:
+        perp_x /= norm
+        perp_y /= norm
+
+    # amplitude de la courbe proportionnelle à la distance
+    dist = math.hypot(dx, dy)
+    amp = curve_height * dist
+
+    # appliquer courbure suivant une sinusoidale centrée
+    curve = np.sin(np.pi * t) * amp
+    lats = lats + perp_y * curve
+    lons = lons + perp_x * curve
+
+    return lats.tolist(), lons.tolist()
+
+
 # -------------------
 # Onglet 3 : Carte interactive avec arcs arrondis
 # -------------------
@@ -290,14 +329,21 @@ with tab3:
             # Arcs arrondis avec hover personnalisé
             for center in centers:
                 for _, row in df_map.iterrows():
-                    arc_lats, arc_lons = make_arc(center["lat"], center["lon"],
-                                                  row["Latitude"], row["Longitude"],
-                                                  n_points=25, curve_height=1.0)
+                    try:
+                        lat2 = float(row["Latitude"])
+                        lon2 = float(row["Longitude"])
+                        lat1 = float(center["lat"])
+                        lon1 = float(center["lon"])
+                    except Exception:
+                        continue  # ignorer si valeurs invalides
+
+                    arc_lats, arc_lons = make_arc(lat1, lon1, lat2, lon2,
+                                                  n_points=28, curve_height=0.6)
 
                     hover_text = (
-                        f"<b>Auteur copubliant :</b> {row[auteurs_copub_col]}<br>"
-                        f"<b>Pays :</b> {row['Pays']}<br>"
-                        f"<b>Ville :</b> {row['Ville']}"
+                        f"<b>Auteur copubliant :</b> {row.get(auteurs_copub_col, '')}<br>"
+                        f"<b>Pays :</b> {row.get('Pays', '')}<br>"
+                        f"<b>Ville :</b> {row.get('Ville', '')}"
                     )
 
                     fig.add_scattermapbox(
@@ -305,7 +351,7 @@ with tab3:
                         lon=arc_lons,
                         mode="lines",
                         line=dict(width=1.5, color=center["color"]),
-                        opacity=0.5,
+                        opacity=0.6,
                         hoverinfo="text",
                         text=[hover_text] * len(arc_lats),
                         showlegend=False
