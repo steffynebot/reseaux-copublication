@@ -244,14 +244,6 @@ def make_arc(lat1, lon1, lat2, lon2, n_points=20, curve_height=0.5):
     curve_height : facteur d'arrondi (0 = ligne droite, >0 = plus arrondi)
     """
     lats = np.linspace(lat1, lat2, n_points)
-    lons = np.linspace(lon1, lon2, n_points)
-
-    # Ajouter un arrondi sur la latitude (effet arc)
-    mid = n_points // 2
-    lats[mid] += curve_height  
-
-    return lats, lons
-
 # -------------------
 # Onglet 3 : Carte interactive avec arcs arrondis
 # -------------------
