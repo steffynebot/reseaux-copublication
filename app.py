@@ -129,11 +129,6 @@ def make_wordcloud(text):
 st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (Sophia & Bordeaux)</h1>", unsafe_allow_html=True)
 
 # -------------------
-# Tabs
-# -------------------
-tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
-
-# -------------------
 # Onglet 1 : KPI et graphiques
 # -------------------
 with tab1:
@@ -154,17 +149,16 @@ with tab1:
 
     # KPI principaux
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Publications", total_pubs, delta=f"{delta_pubs}"if delta_pubs >=0 else f"{delta_pubs} ")
-    col2.metric("Villes", total_villes)
-    col3.metric("Auteurs Inria", total_auteurs_inria)
-    col4.metric("Auteurs copubliants", total_auteurs_copub)
+    col1.metric("Publications", total_pubs, delta=f"{delta_pubs} 📈" if delta_pubs >=0 else f"{delta_pubs} 📉")
+    col2.metric("🏙️ Villes", total_villes)
+    col3.metric("👩‍🔬 Auteurs Inria", total_auteurs_inria)
+    col4.metric("🤝 Auteurs copubliants", total_auteurs_copub)
 
     # Publications par centre
     if not df_filtered.empty:
         pubs_centre = df_filtered.groupby(centre_col)[hal_col].nunique().reset_index()
         st.subheader("📍 Publications par centre")
         cols = st.columns(len(pubs_centre))
-        colors = px.colors.qualitative.Vivid
         for i, row in pubs_centre.iterrows():
             cols[i].metric(row[centre_col], row[hal_col])
 
@@ -217,11 +211,17 @@ with tab1:
         if st.button("Générer le WordCloud"):
             text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
             if text:
-                wc = make_wordcloud(text, colormap="magma")
+                # WordCloud fonctionnel sans colormap ni cache
+                wc = WordCloud(width=800, height=400, background_color='white').generate(text)
                 fig_wc, ax = plt.subplots(figsize=(10, 5))
                 ax.imshow(wc, interpolation="bilinear")
                 ax.axis("off")
                 st.pyplot(fig_wc)
+
+# -------------------
+# Tabs
+# -------------------
+tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
 
 
 # -------------------
