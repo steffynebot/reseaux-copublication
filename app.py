@@ -133,7 +133,7 @@ st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (
 # -------------------
 tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
 # -------------------
-# Onglet 1 : Dashboard Ultra-Pro
+# Onglet 1 : Dashboard Ultra-Pro corrigé
 # -------------------
 with tab1:
     st.markdown("<h2 style='text-align:center;'>KPI et Dashboard</h2>", unsafe_allow_html=True)
@@ -145,7 +145,7 @@ with tab1:
     total_auteurs_inria = df_filtered[auteurs_fr_col].nunique()
     total_auteurs_copub = df_filtered[auteurs_copub_col].nunique()
 
-    # Publications par centres spécifiques
+    # Publications par centres spécifiques (HalID uniques)
     pubs_par_centre = df_filtered.groupby(centre_col)[hal_col].nunique()
     pubs_bordeaux = df_filtered[df_filtered[ville_col] == "Bordeaux"][hal_col].nunique()
     pubs_sophia = df_filtered[df_filtered[ville_col] == "Sophia"][hal_col].nunique()
@@ -168,7 +168,7 @@ with tab1:
     </div>
     """
 
-    # Création de 7 KPI
+    # Création des KPI
     kpi_cols = st.columns(7)
     kpi_cols[0].markdown(
         kpi_style.format(
@@ -251,6 +251,7 @@ with tab1:
                 ax.imshow(wc, interpolation="bilinear")
                 ax.axis("off")
                 st.pyplot(fig_wc)
+
 
 # -------------------
 # Onglet 2 : Réseau interactif
