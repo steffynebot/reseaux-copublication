@@ -6,7 +6,7 @@ import networkx as nx
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import numpy as np
-import pydeck as pdk
+import math
 
 # -------------------
 # Page config
@@ -42,9 +42,7 @@ else:
 # -------------------
 @st.cache_data
 def load_data():
-    df_sophia = pd.read_excel("Copubliants_par_auteur_Inria_Sophia_ville_final_long_lat.xlsx")
-    df_bordeaux = pd.read_excel("Copubliants_par_auteur_Inria_Bordeaux_ville_final_long_lat.xlsx")
-    df = pd.concat([df_sophia, df_bordeaux], ignore_index=True)
+    df = pd.read_excel("Copubliants_par_auteur_Inria_concat.xlsx")
     df.columns = [str(c).strip().replace("\xa0", "").replace(" ", "_") for c in df.columns]
     return df
 
@@ -58,7 +56,7 @@ hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_cop
 ville_col, org_col, annee_col, equipe_col, centre_col = "Ville", "Organisme_copubliant", "Année", "Equipe", "Centre"
 
 # -------------------
-# Sidebar
+# Sidebar filtres
 # -------------------
 with st.sidebar:
     st.markdown(f"<div style='background-color:{SIDEBAR_COLOR};padding:10px;border-radius:0.5rem'>", unsafe_allow_html=True)
@@ -95,7 +93,7 @@ if equipes:
     df_filtered = df_filtered[df_filtered[equipe_col].isin(equipes)]
 
 # -------------------
-# Fonctions
+# Fonctions utiles
 # -------------------
 @st.cache_data(ttl=300)
 def compute_yearly(df):
@@ -124,10 +122,47 @@ def make_wordcloud(text):
                    colormap="tab10").generate(text)
     return wc
 
+def make_arc(lat1, lon1, lat2, lon2, n_points=30, curve_height=0.5):
+    t = np.linspace(0, 1, n_points)
+    lats = lat1 + (lat2 - lat1) * t
+    lons = lon1 + (lon2 - lon1) * t
+    dx, dy = lon2 - lon1, lat2 - lat1
+    perp_x, perp_y = -dy, dx
+    norm = math.hypot(perp_x, perp_y)
+    if norm != 0:
+        perp_x /= norm
+        perp_y /= norm
+    amp = curve_height * math.hypot(dx, dy)
+    curve = np.sin(np.pi * t) * amp
+    lats = lats + perp_y * curve
+    lons = lons + perp_x * curve
+    return lats.tolist(), lons.tolist()
+
+@st.cache_data(ttl=300)
+def compute_arcs(df_map, centers, max_arcs=200):
+    arcs = []
+    df_map = df_map.dropna(subset=["Latitude", "Longitude"])
+    df_sample = df_map.sample(n=min(len(df_map), max_arcs), random_state=42)
+    for center in centers:
+        for _, row in df_sample.iterrows():
+            try:
+                lat1, lon1 = float(center["lat"]), float(center["lon"])
+                lat2, lon2 = float(row["Latitude"]), float(row["Longitude"])
+                arc_lats, arc_lons = make_arc(lat1, lon1, lat2, lon2, n_points=8, curve_height=0.5)
+                hover_text = (
+                    f"<b>Auteur copubliant :</b> {row.get(auteurs_copub_col, '')}<br>"
+                    f"<b>Pays :</b> {row.get('Pays', '')}<br>"
+                    f"<b>Ville :</b> {row.get('Ville', '')}"
+                )
+                arcs.append({"lats": arc_lats, "lons": arc_lons, "color": center["color"], "hover": hover_text})
+            except:
+                continue
+    return arcs
+
 # -------------------
 # Titre principal
 # -------------------
-st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (Sophia & Bordeaux) </h1>", unsafe_allow_html=True)
+st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (Sophia & Bordeaux)</h1>", unsafe_allow_html=True)
 
 # -------------------
 # Tabs
@@ -157,14 +192,12 @@ with tab1:
                       color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
     st.plotly_chart(fig_year, use_container_width=True)
 
-    # Top 10 villes
     top_villes = compute_top(df_filtered, ville_col)
     fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4)])
     fig_villes.update_traces(marker=dict(colors=[ACCENT_COLOR]*len(top_villes)))
     fig_villes.update_layout(title="TOP 10 des villes copubliantes")
     st.plotly_chart(fig_villes, use_container_width=True)
 
-    # Top 10 organismes
     top_orgs = compute_top(df_filtered, org_col)
     fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4)])
     fig_orgs.update_traces(marker=dict(colors=[SECONDARY_COLOR]*len(top_orgs)))
@@ -189,7 +222,6 @@ with tab2:
     if st.button("Générer le réseau"):
         G, pos = build_graph(df_filtered)
         st.info(f"Réseau limité à {len(G.nodes)} nœuds.")
-
         edge_x, edge_y = [], []
         for edge in G.edges():
             x0, y0 = pos[edge[0]]
@@ -197,13 +229,9 @@ with tab2:
             edge_x += [x0, x1, None]
             edge_y += [y0, y1, None]
 
-        edge_trace = go.Scatter(
-            x=edge_x, y=edge_y,
-            line=dict(width=0.5, color=NEUTRAL_COLOR),
-            hoverinfo="none",
-            mode="lines"
-        )
-
+        edge_trace = go.Scatter(x=edge_x, y=edge_y,
+                                line=dict(width=0.5, color=NEUTRAL_COLOR),
+                                hoverinfo="none", mode="lines")
         node_x, node_y, node_text, node_color = [], [], [], []
         color_map = {"Inria": PRIMARY_COLOR, "Copubliant": SECONDARY_COLOR, "Ville": ACCENT_COLOR}
         for node in G.nodes():
@@ -213,11 +241,9 @@ with tab2:
             node_text.append(node)
             node_color.append(color_map.get(G.nodes[node]["type"], NEUTRAL_COLOR))
 
-        node_trace = go.Scatter(
-            x=node_x, y=node_y, mode="markers+text",
-            text=node_text, hoverinfo="text",
-            marker=dict(color=node_color, size=14, line_width=2)
-        )
+        node_trace = go.Scatter(x=node_x, y=node_y, mode="markers+text",
+                                text=node_text, hoverinfo="text",
+                                marker=dict(color=node_color, size=14, line_width=2))
 
         fig_net = go.Figure(data=[edge_trace, node_trace],
                             layout=go.Layout(title="TOP 10 des copublications par auteurs",
@@ -227,64 +253,7 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Sidebar : choix du mode arcs
-# -------------------
-with st.sidebar:
-    arc_mode = st.selectbox(
-        "Mode d'affichage des arcs",
-        ["Couleur par centre (optimisé)", "Multicolors (visuel)"]
-    )
-
-import numpy as np
-
-def make_arc(lat1, lon1, lat2, lon2, n_points=20, curve_height=0.5):
-    """
-    Crée une courbe arrondie entre deux points (lat1, lon1) -> (lat2, lon2).
-    n_points : nombre de points pour lisser la courbe
-    curve_height : facteur d'arrondi (0 = ligne droite, >0 = plus arrondi)
-    """
-    lats = np.linspace(lat1, lat2, n_points)
-    
-import math
-
-def make_arc(lat1, lon1, lat2, lon2, n_points=30, curve_height=0.5):
-    """
-    Retourne (lats, lons) d'un arc arrondi reliant (lat1, lon1) à (lat2, lon2).
-    curve_height : proportion de la "hauteur" de la courbe (0 = droite, >0 = plus arrondi).
-    """
-    # points linéaires de base
-    t = np.linspace(0, 1, n_points)
-    lats = lat1 + (lat2 - lat1) * t
-    lons = lon1 + (lon2 - lon1) * t
-
-    # vecteur direction
-    dx = lon2 - lon1
-    dy = lat2 - lat1
-
-    # vecteur perpendiculaire normalisé
-    perp_x = -dy
-    perp_y = dx
-    norm = math.hypot(perp_x, perp_y)
-    if norm == 0:
-        perp_x, perp_y = 0, 0
-    else:
-        perp_x /= norm
-        perp_y /= norm
-
-    # amplitude de la courbe proportionnelle à la distance
-    dist = math.hypot(dx, dy)
-    amp = curve_height * dist
-
-    # appliquer courbure suivant une sinusoidale centrée
-    curve = np.sin(np.pi * t) * amp
-    lats = lats + perp_y * curve
-    lons = lons + perp_x * curve
-
-    return lats.tolist(), lons.tolist()
-
-
-# -------------------
-# Onglet 3 : Carte interactive avec arcs arrondis
+# Onglet 3 : Carte interactive
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
@@ -293,7 +262,6 @@ with tab3:
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
-            # Coordonnées des centres
             centers = [
                 {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": "#1f77b4"},
                 {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": "#d62728"}
@@ -301,69 +269,26 @@ with tab3:
             if centres:
                 centers = [c for c in centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
-            # Points des copubliants
-            fig = px.scatter_mapbox(
-                df_map,
-                lat="Latitude",
-                lon="Longitude",
-                hover_name=ville_col,
-                hover_data={org_col: True, annee_col: True},
-                color=annee_col,
-                size_max=15,
-                zoom=4,
-                height=600
-            )
+            fig = px.scatter_mapbox(df_map, lat="Latitude", lon="Longitude",
+                                    hover_name=ville_col,
+                                    hover_data={org_col: True, annee_col: True},
+                                    color=annee_col, size_max=15, zoom=4, height=600)
 
-            # Ajouter les centres Inria
             for center in centers:
-                fig.add_scattermapbox(
-                    lat=[center["lat"]],
-                    lon=[center["lon"]],
-                    mode="markers+text",
-                    marker=dict(size=18, color=center["color"], symbol="star"),
-                    text=[center["name"]],
-                    textposition="top right",
-                    name=f"Centre {center['name']}"
-                )
+                fig.add_scattermapbox(lat=[center["lat"]], lon=[center["lon"]],
+                                      mode="markers+text",
+                                      marker=dict(size=18, color=center["color"], symbol="star"),
+                                      text=[center["name"]], textposition="top right",
+                                      name=f"Centre {center['name']}")
 
-            # Arcs arrondis avec hover personnalisé
-            for center in centers:
-                for _, row in df_map.iterrows():
-                    try:
-                        lat2 = float(row["Latitude"])
-                        lon2 = float(row["Longitude"])
-                        lat1 = float(center["lat"])
-                        lon1 = float(center["lon"])
-                    except Exception:
-                        continue  # ignorer si valeurs invalides
+            arcs = compute_arcs(df_map, centers, max_arcs=200)
+            for arc in arcs:
+                fig.add_scattermapbox(lat=arc["lats"], lon=arc["lons"],
+                                      mode="lines", line=dict(width=1.5, color=arc["color"]),
+                                      opacity=0.6, hoverinfo="text", text=[arc["hover"]]*len(arc["lats"]),
+                                      showlegend=False)
 
-                    arc_lats, arc_lons = make_arc(lat1, lon1, lat2, lon2,
-                                                  n_points=8, curve_height=0.6)
-
-                    hover_text = (
-                        f"<b>Auteur copubliant :</b> {row.get(auteurs_copub_col, '')}<br>"
-                        f"<b>Pays :</b> {row.get('Pays', '')}<br>"
-                        f"<b>Ville :</b> {row.get('Ville', '')}"
-                    )
-
-                    fig.add_scattermapbox(
-                        lat=arc_lats,
-                        lon=arc_lons,
-                        mode="lines",
-                        line=dict(width=1.5, color=center["color"]),
-                        opacity=0.6,
-                        hoverinfo="text",
-                        text=[hover_text] * len(arc_lats),
-                        showlegend=False
-                    )
-
-            # Mise en forme
-            fig.update_layout(
-                mapbox_style="carto-positron",
-                margin={"r": 0, "t": 0, "l": 0, "b": 0},
-                legend=dict(y=0.99, x=0.01)
-            )
-
+            fig.update_layout(mapbox_style="carto-positron", margin={"r":0,"t":0,"l":0,"b":0})
             st.plotly_chart(fig, use_container_width=True)
 
 # -------------------
@@ -377,16 +302,13 @@ with tab4:
     de répondre à leurs préoccupations du moment.  
     Il est constitué de **6 membres** aux profils de data scientistes, développeurs et documentalistes experts.
     """)
-
     st.markdown("---")
     st.header("📬 Formulaire de contact")
-
     with st.form("contact_form", clear_on_submit=True):
         nom = st.text_input("Votre nom")
         email = st.text_input("Votre email")
         message = st.text_area("Votre message")
         submitted = st.form_submit_button("Envoyer")
-
         if submitted:
             if not nom or not email or not message:
                 st.error("⚠️ Merci de remplir tous les champs.")
