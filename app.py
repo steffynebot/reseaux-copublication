@@ -227,6 +227,15 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
+# Sidebar : choix du mode arcs
+# -------------------
+with st.sidebar:
+    arc_mode = st.selectbox(
+        "Mode d'affichage des arcs",
+        ["Couleur par centre (optimisé)", "Multicolors (visuel)"]
+    )
+
+# -------------------
 # Onglet 3 : Carte interactive avec Plotly + arcs
 # -------------------
 with tab3:
@@ -241,13 +250,13 @@ with tab3:
             if centres:
                 for c in centres:
                     if c.lower() == "bordeaux":
-                        centers.append({"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667})
+                        centers.append({"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": "#1f77b4"})
                     elif c.lower() == "sophia":
-                        centers.append({"name": "Sophia", "lat": 43.6200, "lon": 7.0500})
+                        centers.append({"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": "#d62728"})
             else:
                 centers = [
-                    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
-                    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
+                    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": "#1f77b4"},
+                    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": "#d62728"}
                 ]
 
             # Points des copubliants
@@ -269,27 +278,45 @@ with tab3:
                     lat=[center["lat"]],
                     lon=[center["lon"]],
                     mode="markers+text",
-                    marker=dict(size=18, color=PRIMARY_COLOR, symbol="star"),
+                    marker=dict(size=18, color=center["color"], symbol="star"),
                     text=[center["name"]],
                     textposition="top right",
                     name=f"Centre {center['name']}"
                 )
 
-            # Générer une palette multicolore
-            colors = px.colors.qualitative.Set1
-            n_colors = len(colors)
+            # -------------------
+            # Mode arcs
+            # -------------------
+            if arc_mode == "Couleur par centre (optimisé)":
+                # Tracer les arcs regroupés par centre
+                for center in centers:
+                    lats, lons = [], []
+                    for _, row in df_map.iterrows():
+                        lats += [center["lat"], row["Latitude"], None]
+                        lons += [center["lon"], row["Longitude"], None]
 
-            # Ajouter les arcs (lignes)
-            for i, center in enumerate(centers):
-                for j, row in df_map.iterrows():
                     fig.add_scattermapbox(
-                        lat=[center["lat"], row["Latitude"]],
-                        lon=[center["lon"], row["Longitude"]],
+                        lat=lats,
+                        lon=lons,
                         mode="lines",
-                        line=dict(width=1.5, color=colors[(i + j) % n_colors]),
-                        opacity=0.6,
-                        showlegend=False
+                        line=dict(width=1.5, color=center["color"]),
+                        opacity=0.4,
+                        name=f"Arcs {center['name']}"
                     )
+
+            else:  # Multicolors
+                colors = px.colors.qualitative.Set1
+                n_colors = len(colors)
+                for i, center in enumerate(centers):
+                    for j, row in df_map.iterrows():
+                        fig.add_scattermapbox(
+                            lat=[center["lat"], row["Latitude"]],
+                            lon=[center["lon"], row["Longitude"]],
+                            mode="lines",
+                            line=dict(width=1.5, color=colors[(i + j) % n_colors]),
+                            opacity=0.6,
+                            showlegend=False
+                        )
 
             # Mise en forme
             fig.update_layout(
