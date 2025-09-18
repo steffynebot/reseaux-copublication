@@ -267,105 +267,107 @@ with tab1:
                 st.pyplot(fig_wc)
 
 # -------------------
-# Onglet 2 
+# Onglet 2 : Réseau copublication hiérarchique (layout manuel)
 # -------------------
+with tab2:
+    st.header("Réseau copublication hiérarchique")
 
-import streamlit as st
-import networkx as nx
-import plotly.graph_objects as go
-from collections import Counter
+    if st.button("Générer le réseau"):
+        G = nx.DiGraph()
 
-st.header("Réseau copublication hiérarchique")
+        # Nombre de publications par Ville (HalID uniques)
+        pub_count = df_filtered.groupby("Ville")[hal_col].nunique().to_dict()
 
-if st.button("Générer le réseau"):
-    G = nx.DiGraph()
-
-    # Calcul du nombre de publications par ville (HalID unique)
-    pub_count = df_filtered.groupby("Ville")["HalID"].nunique().to_dict()
-
-    # Couleurs par niveau
-    level_color = {
-        "Centre": "#1f77b4",
-        "Equipe": "#ff7f0e",
-        "Auteur_FR": "#2ca02c",
-        "Auteur_CP": "#d62728",
-        "Pays": "#9467bd",
-        "Ville": "#8c564b"
-    }
-
-    # Construction du graphe hiérarchique
-    for _, row in df_filtered.iterrows():
-        nodes = {
-            "Centre": row["Centre"],
-            "Equipe": row["Equipe"],
-            "Auteur_FR": row["Auteurs_FR"],
-            "Auteur_CP": row["Auteurs_copubliants"],
-            "Pays": row["Pays"],
-            "Ville": row["Ville"]
+        # Couleurs par niveau (adaptées à ton thème)
+        level_color = {
+            "Centre": PRIMARY_COLOR,
+            "Equipe": SECONDARY_COLOR,
+            "Auteur_FR": ACCENT_COLOR,
+            "Auteur_CP": "#d62728",
+            "Pays": "#9467bd",
+            "Ville": NEUTRAL_COLOR
         }
 
-        for level, node in nodes.items():
-            if not G.has_node(node):
-                G.add_node(node, type=level, count=0)
-            # Compte des publications pour Ville uniquement
-            if level == "Ville":
-                G.nodes[node]["count"] = pub_count.get(node, 1)
+        # Construction du graphe hiérarchique
+        for _, row in df_filtered.iterrows():
+            nodes = {
+                "Centre": row[centre_col],
+                "Equipe": row[equipe_col],
+                "Auteur_FR": row[auteurs_fr_col],
+                "Auteur_CP": row[auteurs_copub_col],
+                "Pays": row["Pays"],
+                "Ville": row[ville_col]
+            }
 
-        # Ajout des arêtes hiérarchiques
-        G.add_edge(nodes["Centre"], nodes["Equipe"])
-        G.add_edge(nodes["Equipe"], nodes["Auteur_FR"])
-        G.add_edge(nodes["Auteur_FR"], nodes["Auteur_CP"])
-        G.add_edge(nodes["Auteur_CP"], nodes["Pays"])
-        G.add_edge(nodes["Pays"], nodes["Ville"])
+            for level, node in nodes.items():
+                if not G.has_node(node):
+                    G.add_node(node, type=level, count=0)
+                if level == "Ville":
+                    G.nodes[node]["count"] = pub_count.get(node, 1)
 
-    # Layout hiérarchique
-    pos = nx.nx_agraph.graphviz_layout(G, prog="dot")  # Nécessite pygraphviz ou pydot
+            # Arêtes hiérarchiques
+            G.add_edge(nodes["Centre"], nodes["Equipe"])
+            G.add_edge(nodes["Equipe"], nodes["Auteur_FR"])
+            G.add_edge(nodes["Auteur_FR"], nodes["Auteur_CP"])
+            G.add_edge(nodes["Auteur_CP"], nodes["Pays"])
+            G.add_edge(nodes["Pays"], nodes["Ville"])
 
-    # Arêtes
-    edge_x, edge_y = [], []
-    for edge in G.edges():
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        edge_x += [x0, x1, None]
-        edge_y += [y0, y1, None]
+        # Layout hiérarchique manuel
+        levels = ["Centre", "Equipe", "Auteur_FR", "Auteur_CP", "Pays", "Ville"]
+        y_positions = {level: -i*200 for i, level in enumerate(levels)}  # vertical spacing
+        x_offsets = defaultdict(int)
+        pos = {}
+        for node in G.nodes():
+            level = G.nodes[node]["type"]
+            pos[node] = (x_offsets[level], y_positions[level])
+            x_offsets[level] += 200  # horizontal spacing
 
-    edge_trace = go.Scatter(
-        x=edge_x, y=edge_y,
-        line=dict(width=1, color="#888"),
-        hoverinfo="none",
-        mode="lines"
-    )
+        # Arêtes
+        edge_x, edge_y = [], []
+        for source, target in G.edges():
+            x0, y0 = pos[source]
+            x1, y1 = pos[target]
+            edge_x += [x0, x1, None]
+            edge_y += [y0, y1, None]
 
-    # Nœuds
-    node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
-    for node in G.nodes():
-        x, y = pos[node]
-        node_x.append(x)
-        node_y.append(y)
-        node_text.append(f"{node} ({G.nodes[node]['type']}) - pubs: {G.nodes[node]['count']}")
-        node_color.append(level_color.get(G.nodes[node]["type"], "#7f7f7f"))
-        node_size.append(10 + G.nodes[node]["count"]*2)  # Taille proportionnelle
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=1, color="#888"),
+            hoverinfo="none",
+            mode="lines"
+        )
 
-    node_trace = go.Scatter(
-        x=node_x, y=node_y,
-        mode="markers+text",
-        text=[node for node in G.nodes()],
-        hovertext=node_text,
-        hoverinfo="text",
-        marker=dict(color=node_color, size=node_size, line_width=2)
-    )
+        # Nœuds
+        node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            node_text.append(f"{node} ({G.nodes[node]['type']}) - pubs: {G.nodes[node]['count']}")
+            node_color.append(level_color.get(G.nodes[node]["type"], "#7f7f7f"))
+            node_size.append(10 + G.nodes[node]["count"]*2)  # taille proportionnelle
 
-    # Figure
-    fig = go.Figure(data=[edge_trace, node_trace],
-                    layout=go.Layout(
-                        title="Réseau hiérarchique des copublications",
-                        showlegend=False,
-                        hovermode="closest",
-                        plot_bgcolor="#f9f9f9",
-                        paper_bgcolor="#f9f9f9"
-                    ))
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode="markers+text",
+            text=[node for node in G.nodes()],
+            hovertext=node_text,
+            hoverinfo="text",
+            marker=dict(color=node_color, size=node_size, line_width=2)
+        )
 
-    st.plotly_chart(fig, use_container_width=True)
+        # Figure
+        fig = go.Figure(data=[edge_trace, node_trace],
+                        layout=go.Layout(
+                            title="Réseau hiérarchique des copublications",
+                            showlegend=False,
+                            hovermode="closest",
+                            plot_bgcolor=BACKGROUND_COLOR,
+                            paper_bgcolor=BACKGROUND_COLOR
+                        ))
+
+        st.plotly_chart(fig, use_container_width=True)
+
 
 # -------------------
 # Onglet 3 : Carte interactive Heatmap
