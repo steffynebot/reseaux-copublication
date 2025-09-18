@@ -7,6 +7,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import pydeck as pdk
 
 # -------------------
 # Page config
@@ -122,43 +123,6 @@ def make_wordcloud(text):
                    colormap="tab10").generate(text)
     return wc
 
-def make_arc(lat1, lon1, lat2, lon2, n_points=30, curve_height=0.5):
-    t = np.linspace(0, 1, n_points)
-    lats = lat1 + (lat2 - lat1) * t
-    lons = lon1 + (lon2 - lon1) * t
-    dx, dy = lon2 - lon1, lat2 - lat1
-    perp_x, perp_y = -dy, dx
-    norm = math.hypot(perp_x, perp_y)
-    if norm != 0:
-        perp_x /= norm
-        perp_y /= norm
-    amp = curve_height * math.hypot(dx, dy)
-    curve = np.sin(np.pi * t) * amp
-    lats = lats + perp_y * curve
-    lons = lons + perp_x * curve
-    return lats.tolist(), lons.tolist()
-
-@st.cache_data(ttl=300)
-def compute_arcs(df_map, centers, max_arcs=200):
-    arcs = []
-    df_map = df_map.dropna(subset=["Latitude", "Longitude"])
-    df_sample = df_map.sample(n=min(len(df_map), max_arcs), random_state=42)
-    for center in centers:
-        for _, row in df_sample.iterrows():
-            try:
-                lat1, lon1 = float(center["lat"]), float(center["lon"])
-                lat2, lon2 = float(row["Latitude"]), float(row["Longitude"])
-                arc_lats, arc_lons = make_arc(lat1, lon1, lat2, lon2, n_points=8, curve_height=0.5)
-                hover_text = (
-                    f"<b>Auteur copubliant :</b> {row.get(auteurs_copub_col, '')}<br>"
-                    f"<b>Pays :</b> {row.get('Pays', '')}<br>"
-                    f"<b>Ville :</b> {row.get('Ville', '')}"
-                )
-                arcs.append({"lats": arc_lats, "lons": arc_lons, "color": center["color"], "hover": hover_text})
-            except:
-                continue
-    return arcs
-
 # -------------------
 # Titre principal
 # -------------------
@@ -253,7 +217,7 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Onglet 3 : Carte interactive
+# Onglet 3 : Carte PyDeck avec HexagonLayer
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
@@ -262,34 +226,51 @@ with tab3:
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
-            centers = [
-                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": "#1f77b4"},
-                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": "#d62728"}
+            # Définir les centres Inria
+            inria_centers = [
+                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [31, 119, 180]},
+                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [214, 39, 40]}
             ]
             if centres:
-                centers = [c for c in centers if c["name"].lower() in [cc.lower() for cc in centres]]
+                inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
-            fig = px.scatter_mapbox(df_map, lat="Latitude", lon="Longitude",
-                                    hover_name=ville_col,
-                                    hover_data={org_col: True, annee_col: True},
-                                    color=annee_col, size_max=15, zoom=4, height=600)
+            df_map['position'] = df_map.apply(lambda row: [row['Longitude'], row['Latitude']], axis=1)
+            centers_data = pd.DataFrame([{"position": [c["lon"], c["lat"]], "name": c["name"], "color": c["color"]} for c in inria_centers])
 
-            for center in centers:
-                fig.add_scattermapbox(lat=[center["lat"]], lon=[center["lon"]],
-                                      mode="markers+text",
-                                      marker=dict(size=18, color=center["color"], symbol="star"),
-                                      text=[center["name"]], textposition="top right",
-                                      name=f"Centre {center['name']}")
+            hex_layer = pdk.Layer(
+                "HexagonLayer",
+                data=df_map,
+                get_position="position",
+                radius=5000,
+                elevation_scale=50,
+                elevation_range=[0, 1000],
+                pickable=True,
+                extruded=True,
+                coverage=1
+            )
 
-            arcs = compute_arcs(df_map, centers, max_arcs=200)
-            for arc in arcs:
-                fig.add_scattermapbox(lat=arc["lats"], lon=arc["lons"],
-                                      mode="lines", line=dict(width=1.5, color=arc["color"]),
-                                      opacity=0.6, hoverinfo="text", text=[arc["hover"]]*len(arc["lats"]),
-                                      showlegend=False)
+            scatter_layer = pdk.Layer(
+                "ScatterplotLayer",
+                data=centers_data,
+                get_position="position",
+                get_fill_color="color",
+                get_radius=15000,
+                pickable=True,
+            )
 
-            fig.update_layout(mapbox_style="carto-positron", margin={"r":0,"t":0,"l":0,"b":0})
-            st.plotly_chart(fig, use_container_width=True)
+            view_state = pdk.ViewState(
+                latitude=44.0,
+                longitude=6.0,
+                zoom=4,
+                pitch=40
+            )
+
+            r = pdk.Deck(
+                layers=[hex_layer, scatter_layer],
+                initial_view_state=view_state,
+                tooltip={"text": "Copubliants\nElevation: {elevationValue}"}
+            )
+            st.pydeck_chart(r)
 
 # -------------------
 # Onglet 4 : Contact
