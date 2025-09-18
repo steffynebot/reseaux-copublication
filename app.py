@@ -55,7 +55,6 @@ if df.empty:
 # Colonnes
 hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_copubliants"
 ville_col, org_col, annee_col, equipe_col, centre_col = "Ville", "Organisme_copubliant", "Année", "Equipe", "Centre"
-
 # -------------------
 # Sidebar filtres améliorée
 # -------------------
@@ -72,7 +71,7 @@ with st.sidebar:
 
     # Logo
     try:
-        st.image("logo.png", use_column_width=True)
+        st.image("logo.png", use_container_width=True)  # <--- corrigé ici
     except:
         st.markdown("**Logo manquant**")
 
