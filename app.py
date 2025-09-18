@@ -133,12 +133,11 @@ st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (
 # -------------------
 tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
 
-
 # -------------------
-# Onglet 1 : KPI et graphiques
+# Onglet 1 : KPI et dashboard moderne
 # -------------------
 with tab1:
-    st.header("KPI et graphiques 🚀")
+    st.header("KPI et Dashboard")
 
     # Calculs de base
     pubs_year = compute_yearly(df_filtered)
@@ -147,28 +146,29 @@ with tab1:
     total_auteurs_inria = df_filtered[auteurs_fr_col].nunique()
     total_auteurs_copub = df_filtered[auteurs_copub_col].nunique()
 
-    # Delta : variation par rapport à l'année précédente
-    if len(pubs_year) > 1:
-        delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2]
-    else:
-        delta_pubs = 0
+    # Delta pour Publications
+    delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else 0
 
-    # KPI principaux
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Publications", total_pubs, delta=f"{delta_pubs} 📈" if delta_pubs >=0 else f"{delta_pubs} 📉")
-    col2.metric("🏙️ Villes", total_villes)
-    col3.metric("👩‍🔬 Auteurs Inria", total_auteurs_inria)
-    col4.metric("🤝 Auteurs copubliants", total_auteurs_copub)
+    # ---------------- KPI ----------------
+    kpi_cols = st.columns(4)
+    kpi_cols[0].metric("Publications", total_pubs, delta=f"{delta_pubs}" if delta_pubs != 0 else None)
+    kpi_cols[1].metric("Villes", total_villes)
+    kpi_cols[2].metric("Auteurs Inria", total_auteurs_inria)
+    kpi_cols[3].metric("Auteurs copubliants", total_auteurs_copub)
 
     # Publications par centre
     if not df_filtered.empty:
         pubs_centre = df_filtered.groupby(centre_col)[hal_col].nunique().reset_index()
-        st.subheader("📍 Publications par centre")
-        cols = st.columns(len(pubs_centre))
+        st.subheader("Publications par centre")
+        centre_cols = st.columns(len(pubs_centre))
         for i, row in pubs_centre.iterrows():
-            cols[i].metric(row[centre_col], row[hal_col])
+            centre_cols[i].metric(row[centre_col], row[hal_col])
 
-    # Graphique : publications par année
+    # ---------------- Graphiques ----------------
+    st.subheader("Visualisations")
+    graph_col1, graph_col2 = st.columns(2)
+
+    # Publications par année
     fig_year = px.bar(
         pubs_year,
         x=annee_col,
@@ -180,9 +180,9 @@ with tab1:
     )
     fig_year.update_traces(marker_line_color='black', marker_line_width=1.5)
     fig_year.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_year, use_container_width=True)
+    graph_col1.plotly_chart(fig_year, use_container_width=True)
 
-    # Graphique : Top villes
+    # Top villes
     top_villes = compute_top(df_filtered, ville_col)
     fig_villes = go.Figure(
         data=[go.Pie(
@@ -195,9 +195,9 @@ with tab1:
         )]
     )
     fig_villes.update_layout(title="TOP 10 des villes copubliantes")
-    st.plotly_chart(fig_villes, use_container_width=True)
+    graph_col2.plotly_chart(fig_villes, use_container_width=True)
 
-    # Graphique : Top organismes
+    # Top organismes
     top_orgs = compute_top(df_filtered, org_col)
     fig_orgs = go.Figure(
         data=[go.Pie(
@@ -212,19 +212,16 @@ with tab1:
     fig_orgs.update_layout(title="TOP 10 des organismes copubliants")
     st.plotly_chart(fig_orgs, use_container_width=True)
 
-    # WordCloud
+    # ---------------- WordCloud ----------------
     if "Mots-cles" in df_filtered.columns:
         if st.button("Générer le WordCloud"):
             text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
             if text:
-                # WordCloud fonctionnel sans colormap ni cache
                 wc = WordCloud(width=800, height=400, background_color='white').generate(text)
                 fig_wc, ax = plt.subplots(figsize=(10, 5))
                 ax.imshow(wc, interpolation="bilinear")
                 ax.axis("off")
                 st.pyplot(fig_wc)
-
-
 
 
 # -------------------
