@@ -338,7 +338,7 @@ with tab3:
                         continue  # ignorer si valeurs invalides
 
                     arc_lats, arc_lons = make_arc(lat1, lon1, lat2, lon2,
-                                                  n_points=28, curve_height=0.6)
+                                                  n_points=8, curve_height=0.6)
 
                     hover_text = (
                         f"<b>Auteur copubliant :</b> {row.get(auteurs_copub_col, '')}<br>"
