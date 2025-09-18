@@ -134,10 +134,10 @@ st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (
 tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
 
 # -------------------
-# Onglet 1 : KPI et dashboard moderne
+# Onglet 1 : Dashboard moderne
 # -------------------
 with tab1:
-    st.header("KPI et Dashboard")
+    st.markdown("<h2 style='text-align:center;'>KPI et Dashboard</h2>", unsafe_allow_html=True)
 
     # Calculs de base
     pubs_year = compute_yearly(df_filtered)
@@ -145,45 +145,54 @@ with tab1:
     total_villes = df_filtered[ville_col].nunique()
     total_auteurs_inria = df_filtered[auteurs_fr_col].nunique()
     total_auteurs_copub = df_filtered[auteurs_copub_col].nunique()
-
-    # Delta pour Publications
     delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else 0
 
-    # ---------------- KPI ----------------
+    # ---------------- KPI en bulles ----------------
+    kpi_style = """
+    <div style="
+        background: #f0f2f6; 
+        border-radius: 25px; 
+        padding: 20px; 
+        text-align: center; 
+        box-shadow: 3px 3px 10px rgba(0,0,0,0.15); 
+        font-size: 22px;
+        font-weight: bold;
+        color:#111;
+        margin:10px;">
+        {title}<br><span style='font-size:28px'>{value}</span>{delta}
+    </div>
+    """
+
     kpi_cols = st.columns(4)
-    kpi_cols[0].metric("Publications", total_pubs, delta=f"{delta_pubs}" if delta_pubs != 0 else None)
-    kpi_cols[1].metric("Villes", total_villes)
-    kpi_cols[2].metric("Auteurs Inria", total_auteurs_inria)
-    kpi_cols[3].metric("Auteurs copubliants", total_auteurs_copub)
+    kpi_cols[0].markdown(kpi_style.format(title="Publications", value=total_pubs,
+                                         delta=f"<br><span style='color:green'>{delta_pubs}</span>" if delta_pubs>=0 else f"<br><span style='color:red'>{delta_pubs}</span>"),
+                         unsafe_allow_html=True)
+    kpi_cols[1].markdown(kpi_style.format(title="Villes", value=total_villes, delta=""), unsafe_allow_html=True)
+    kpi_cols[2].markdown(kpi_style.format(title="Auteurs Inria", value=total_auteurs_inria, delta=""), unsafe_allow_html=True)
+    kpi_cols[3].markdown(kpi_style.format(title="Auteurs copubliants", value=total_auteurs_copub, delta=""), unsafe_allow_html=True)
 
-    # Publications par centre
-    if not df_filtered.empty:
-        pubs_centre = df_filtered.groupby(centre_col)[hal_col].nunique().reset_index()
-        st.subheader("Publications par centre")
-        centre_cols = st.columns(len(pubs_centre))
-        for i, row in pubs_centre.iterrows():
-            centre_cols[i].metric(row[centre_col], row[hal_col])
-
-    # ---------------- Graphiques ----------------
-    st.subheader("Visualisations")
-    graph_col1, graph_col2 = st.columns(2)
-
-    # Publications par année
+    # ---------------- Graphique Publications par année (full width) ----------------
+    st.subheader("Publications par année")
     fig_year = px.bar(
         pubs_year,
         x=annee_col,
         y=hal_col,
-        title="Publications par année",
         color=hal_col,
         color_continuous_scale=px.colors.sequential.Plasma,
-        text=hal_col
+        text=hal_col,
     )
     fig_year.update_traces(marker_line_color='black', marker_line_width=1.5)
-    fig_year.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-    graph_col1.plotly_chart(fig_year, use_container_width=True)
+    fig_year.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', title_x=0.5)
+    st.plotly_chart(fig_year, use_container_width=True)
 
-    # Top villes
+    # ---------------- Graphiques TOP côte à côte ----------------
+    st.subheader("TOP 10")
     top_villes = compute_top(df_filtered, ville_col)
+    top_orgs = compute_top(df_filtered, org_col)
+
+    col1, col2 = st.columns(2)
+
+    # TOP villes
     fig_villes = go.Figure(
         data=[go.Pie(
             labels=top_villes.index,
@@ -194,11 +203,10 @@ with tab1:
             textinfo='label+percent'
         )]
     )
-    fig_villes.update_layout(title="TOP 10 des villes copubliantes")
-    graph_col2.plotly_chart(fig_villes, use_container_width=True)
+    fig_villes.update_layout(title="Villes copubliantes")
+    col1.plotly_chart(fig_villes, use_container_width=True)
 
-    # Top organismes
-    top_orgs = compute_top(df_filtered, org_col)
+    # TOP organismes
     fig_orgs = go.Figure(
         data=[go.Pie(
             labels=top_orgs.index,
@@ -209,8 +217,8 @@ with tab1:
             textinfo='label+percent'
         )]
     )
-    fig_orgs.update_layout(title="TOP 10 des organismes copubliants")
-    st.plotly_chart(fig_orgs, use_container_width=True)
+    fig_orgs.update_layout(title="Organismes copubliants")
+    col2.plotly_chart(fig_orgs, use_container_width=True)
 
     # ---------------- WordCloud ----------------
     if "Mots-cles" in df_filtered.columns:
