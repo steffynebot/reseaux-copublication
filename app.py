@@ -217,17 +217,12 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 import pydeck as pdk
-
-import pydeck as pdk
-import pandas as pd
-
 # -------------------
-# Onglet 3 : Carte de chaleur
+# Onglet 3 : Carte de chaleur avec centres Inria
 # -------------------
 with tab3:
     st.header("Carte des copublications")
     if st.button("Générer la carte"):
-        # Préparer les données
         df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
@@ -240,40 +235,59 @@ with tab3:
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
-            # Préparer les données pour le HeatmapLayer
-            heatmap_data = []
-            for _, row in df_map.iterrows():
-                heatmap_data.append([row["Longitude"], row["Latitude"]])
+            # DataFrame pour le HeatmapLayer
+            heatmap_df = pd.DataFrame({
+                "lon": df_map["Longitude"],
+                "lat": df_map["Latitude"]
+            })
 
-            # Créer le HeatmapLayer
+            # HeatmapLayer
             heatmap_layer = pdk.Layer(
                 "HeatmapLayer",
-                heatmap_data,
-                get_position=["lng", "lat"],
+                heatmap_df,
+                get_position=["lon", "lat"],
                 get_weight=1,
                 radius_pixels=30,
                 opacity=0.6,
-                threshold=0.03,
+                threshold=0.03
             )
 
-            # Définir l'état de la vue initiale
+            # ScatterplotLayer pour les centres Inria
+            centers_df = pd.DataFrame({
+                "lon": [c["lon"] for c in inria_centers],
+                "lat": [c["lat"] for c in inria_centers],
+                "name": [c["name"] for c in inria_centers],
+                "color": [c["color"] for c in inria_centers]
+            })
+            scatter_layer = pdk.Layer(
+                "ScatterplotLayer",
+                centers_df,
+                get_position=["lon", "lat"],
+                get_fill_color="color",
+                get_radius=15000,
+                pickable=True,
+            )
+
+            # Vue centrée sur les données
             view_state = pdk.ViewState(
-                latitude=44.0,
-                longitude=6.0,
+                latitude=df_map["Latitude"].mean(),
+                longitude=df_map["Longitude"].mean(),
                 zoom=5,
-                pitch=45,
-                bearing=0
+                pitch=45
             )
 
-            # Créer la carte avec le HeatmapLayer
+            # Créer la carte
             deck = pdk.Deck(
-                layers=[heatmap_layer],
+                layers=[heatmap_layer, scatter_layer],
                 initial_view_state=view_state,
-                map_style=pdk.map_styles.CARTO_DARK
+                map_style=pdk.map_styles.CARTO_DARK,
+                tooltip={"text": "{name}"}
             )
 
-            # Afficher la carte
+            # Afficher
             st.pydeck_chart(deck)
+
+
 
 # -------------------
 # Onglet 4 : Contact
