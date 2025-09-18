@@ -227,14 +227,8 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Onglet 3 : Carte interactive avec pydeck
+# Onglet 3 : Carte interactive avec Plotly + arcs
 # -------------------
-from keplergl import KeplerGl
-import streamlit as st
-import pandas as pd
-import streamlit.components.v1 as components
-import tempfile
-
 with tab3:
     st.header("Carte copublications Italie")
     if st.button("Générer la carte"):
@@ -256,35 +250,55 @@ with tab3:
                     {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
                 ]
 
-            # Construire le DataFrame pour les arcs
-            lines = []
+            # Points des copubliants
+            fig = px.scatter_mapbox(
+                df_map,
+                lat="Latitude",
+                lon="Longitude",
+                hover_name=ville_col,
+                hover_data={org_col: True, annee_col: True},
+                color=annee_col,
+                size_max=15,
+                zoom=4,
+                height=600
+            )
+
+            # Ajouter les centres Inria
             for center in centers:
-                for _, row in df_map.iterrows():
-                    lines.append({
-                        "start_lat": center['lat'],
-                        "start_lon": center['lon'],
-                        "end_lat": row['Latitude'],
-                        "end_lon": row['Longitude'],
-                        "ville": row[ville_col],
-                        "publications": 1  # tu peux remplacer par le nombre réel
-                    })
+                fig.add_scattermapbox(
+                    lat=[center["lat"]],
+                    lon=[center["lon"]],
+                    mode="markers+text",
+                    marker=dict(size=18, color=PRIMARY_COLOR, symbol="star"),
+                    text=[center["name"]],
+                    textposition="top right",
+                    name=f"Centre {center['name']}"
+                )
 
-            df_lines = pd.DataFrame(lines)
+            # Générer une palette multicolore
+            colors = px.colors.qualitative.Set1
+            n_colors = len(colors)
 
-            # Créer la carte Kepler
-            map_1 = KeplerGl(height=600)
-            map_1.add_data(data=df_lines, name="lines")
+            # Ajouter les arcs (lignes)
+            for i, center in enumerate(centers):
+                for j, row in df_map.iterrows():
+                    fig.add_scattermapbox(
+                        lat=[center["lat"], row["Latitude"]],
+                        lon=[center["lon"], row["Longitude"]],
+                        mode="lines",
+                        line=dict(width=1.5, color=colors[(i + j) % n_colors]),
+                        opacity=0.6,
+                        showlegend=False
+                    )
 
-            # Export temporaire en HTML
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp_file:
-                map_1.save_to_html(file_name=tmp_file.name)
-                tmp_file_path = tmp_file.name
+            # Mise en forme
+            fig.update_layout(
+                mapbox_style="carto-positron",
+                margin={"r":0,"t":0,"l":0,"b":0},
+                legend=dict(y=0.99, x=0.01)
+            )
 
-            # Afficher dans Streamlit
-            with open(tmp_file_path, "r", encoding="utf-8") as f:
-                html = f.read()
-            components.html(html, height=600)
-
+            st.plotly_chart(fig, use_container_width=True)
 # -------------------
 # Onglet 4 : Contact
 # -------------------
