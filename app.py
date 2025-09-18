@@ -217,10 +217,16 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Onglet 3 : Carte PyDeck avec HexagonLayer
+# Onglet 3 : Carte PyDeck avec HexagonLayer + arcs
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
+
+    # Sidebar pour paramètres interactifs
+    st.sidebar.subheader("Options carte")
+    hex_radius = st.sidebar.slider("Rayon HexagonLayer (mètres)", min_value=1000, max_value=20000, value=5000, step=1000)
+    arc_elevation = st.sidebar.slider("Hauteur des arcs", min_value=1000, max_value=20000, value=5000, step=500)
+
     if st.button("Générer la carte"):
         df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
         if df_map.empty:
@@ -237,11 +243,12 @@ with tab3:
             df_map['position'] = df_map.apply(lambda row: [row['Longitude'], row['Latitude']], axis=1)
             centers_data = pd.DataFrame([{"position": [c["lon"], c["lat"]], "name": c["name"], "color": c["color"]} for c in inria_centers])
 
+            # HexagonLayer pour la densité
             hex_layer = pdk.Layer(
                 "HexagonLayer",
                 data=df_map,
                 get_position="position",
-                radius=5000,
+                radius=hex_radius,
                 elevation_scale=50,
                 elevation_range=[0, 1000],
                 pickable=True,
@@ -249,12 +256,34 @@ with tab3:
                 coverage=1
             )
 
+            # ScatterplotLayer pour les centres Inria
             scatter_layer = pdk.Layer(
                 "ScatterplotLayer",
                 data=centers_data,
                 get_position="position",
                 get_fill_color="color",
                 get_radius=15000,
+                pickable=True,
+            )
+
+            # ArcLayer pour les arcs depuis chaque centre
+            arcs_data = []
+            for center in inria_centers:
+                for _, row in df_map.iterrows():
+                    arcs_data.append({
+                        "source_position": [center["lon"], center["lat"], 0],
+                        "target_position": [row["Longitude"], row["Latitude"], arc_elevation],
+                        "color": center["color"]
+                    })
+
+            arc_layer = pdk.Layer(
+                "ArcLayer",
+                data=arcs_data,
+                get_source_position="source_position",
+                get_target_position="target_position",
+                get_source_color="color",
+                get_target_color="color",
+                get_width=3,
                 pickable=True,
             )
 
@@ -266,10 +295,11 @@ with tab3:
             )
 
             r = pdk.Deck(
-                layers=[hex_layer, scatter_layer],
+                layers=[hex_layer, scatter_layer, arc_layer],
                 initial_view_state=view_state,
                 tooltip={"text": "Copubliants\nElevation: {elevationValue}"}
             )
+
             st.pydeck_chart(r)
 
 # -------------------
