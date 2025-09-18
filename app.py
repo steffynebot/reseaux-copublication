@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import pydeck as pdk
+from collections import Counter, defaultdict
 
 # -------------------
 # Page config
