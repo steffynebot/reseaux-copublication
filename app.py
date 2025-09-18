@@ -129,6 +129,12 @@ def make_wordcloud(text):
 st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (Sophia & Bordeaux)</h1>", unsafe_allow_html=True)
 
 # -------------------
+# Tabs
+# -------------------
+tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
+
+
+# -------------------
 # Onglet 1 : KPI et graphiques
 # -------------------
 with tab1:
@@ -218,10 +224,7 @@ with tab1:
                 ax.axis("off")
                 st.pyplot(fig_wc)
 
-# -------------------
-# Tabs
-# -------------------
-tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
+
 
 
 # -------------------
