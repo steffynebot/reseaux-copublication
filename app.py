@@ -267,96 +267,123 @@ with tab1:
                 st.pyplot(fig_wc)
 
 
-# -------------------
-# Onglet 2 : Réseau interactif amélioré
-# -------------------
-with tab2:
+import streamlit as st
+import plotly.graph_objects as go
+import networkx as nx
+import pandas as pd
+
+# Définir les couleurs pour chaque niveau
+LEVEL_COLORS = {
+    "Centre": "#1f77b4",  # Bleu
+    "Equipe": "#ff7f0e",  # Orange
+    "Pays": "#2ca02c",    # Vert
+    "Ville": "#d62728"    # Rouge
+}
+
+# Fonction pour construire le graphe hiérarchique
+def build_hierarchical_graph(df):
+    G = nx.DiGraph()  # Graphe dirigé pour représenter la hiérarchie
+
+    # Ajouter les nœuds et les relations
+    for _, row in df.iterrows():
+        centre = row["Centre"]
+        equipe = row["Equipe"]
+        pays = row["Pays"]
+        ville = row["Ville"]
+
+        # Ajouter les nœuds avec leurs types
+        G.add_node(centre, type="Centre")
+        G.add_node(equipe, type="Equipe")
+        G.add_node(pays, type="Pays")
+        G.add_node(ville, type="Ville")
+
+        # Ajouter les arêtes pour représenter les relations
+        G.add_edge(centre, equipe)
+        G.add_edge(equipe, pays)
+        G.add_edge(pays, ville)
+
+    return G
+
+# Fonction pour générer la visualisation
+def plot_hierarchical_graph(G):
+    pos = nx.spring_layout(G, seed=42)  # Positionnement des nœuds
+
+    # Tracer les arêtes
+    edge_x = []
+    edge_y = []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
+
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        line=dict(width=0.5, color="#888"),
+        hoverinfo="none",
+        mode="lines"
+    )
+
+    # Tracer les nœuds
+    node_x = []
+    node_y = []
+    node_text = []
+    node_color = []
+    node_size = []
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+        node_text.append(node)
+        node_color.append(LEVEL_COLORS.get(G.nodes[node]["type"], "#7f7f7f"))
+        node_size.append(10 + len(list(G.neighbors(node))) * 2)  # Taille en fonction du nombre de voisins
+
+    node_trace = go.Scatter(
+        x=node_x, y=node_y,
+        mode="markers+text",
+        text=node_text,
+        hoverinfo="text",
+        marker=dict(
+            color=node_color,
+            size=node_size,
+            line_width=2
+        )
+    )
+
+    # Créer la figure
+    fig = go.Figure(data=[edge_trace, node_trace],
+                    layout=go.Layout(
+                        title="Réseau hiérarchique des copublications",
+                        showlegend=False,
+                        hovermode="closest",
+                        plot_bgcolor="#f9f9f9",
+                        paper_bgcolor="#f9f9f9"
+                    ))
+
+    return fig
+
+# Interface Streamlit
+with st.container():
     st.header("Réseau copublication hiérarchique")
-    
+
     if st.button("Générer le réseau"):
-        import networkx as nx
-        import plotly.graph_objects as go
-        from collections import Counter
-
-        # Création du graphe
-        G = nx.Graph()
-
-        # Couleurs par niveau
-        level_color = {
-            "Centre": "#1f77b4",
-            "Equipe": "#ff7f0e",
-            "Pays": "#2ca02c",
-            "Ville": "#d62728"
+        # Charger les données (exemple)
+        data = {
+            "Centre": ["Centre Sophia", "Centre Bordeaux", "Centre Sophia"],
+            "Equipe": ["Equipe A", "Equipe B", "Equipe A"],
+            "Pays": ["France", "France", "France"],
+            "Ville": ["Sophia Antipolis", "Bordeaux", "Nice"]
         }
+        df = pd.DataFrame(data)
 
-        # Construire le graphe hiérarchique
-        for _, row in df_filtered.iterrows():
-            centre = row["Centre"]
-            equipe = row["Equipe"]
-            pays = row["Pays"]
-            ville = row["Ville"]
-            
-            # Ajouter les nœuds
-            for node, node_type in [(centre, "Centre"), (equipe, "Equipe"), (pays, "Pays"), (ville, "Ville")]:
-                if not G.has_node(node):
-                    G.add_node(node, type=node_type, count=0)
-                G.nodes[node]["count"] += 1  # Compte pour la taille
+        # Construire le graphe
+        G = build_hierarchical_graph(df)
 
-            # Ajouter les liens
-            G.add_edge(centre, equipe)
-            G.add_edge(equipe, pays)
-            G.add_edge(pays, ville)
+        # Générer la visualisation
+        fig = plot_hierarchical_graph(G)
 
-        # Positionnement
-        pos = nx.spring_layout(G, seed=42)  # Force-directed layout
-
-        # Traces pour les arêtes
-        edge_x, edge_y = [], []
-        for edge in G.edges():
-            x0, y0 = pos[edge[0]]
-            x1, y1 = pos[edge[1]]
-            edge_x += [x0, x1, None]
-            edge_y += [y0, y1, None]
-
-        edge_trace = go.Scatter(
-            x=edge_x, y=edge_y,
-            line=dict(width=0.5, color="#888"),
-            hoverinfo="none",
-            mode="lines"
-        )
-
-        # Traces pour les nœuds
-        node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
-        for node in G.nodes():
-            x, y = pos[node]
-            node_x.append(x)
-            node_y.append(y)
-            node_text.append(f"{node} ({G.nodes[node]['type']}) - {G.nodes[node]['count']} pubs")
-            node_color.append(level_color.get(G.nodes[node]["type"], "#7f7f7f"))
-            node_size.append(10 + G.nodes[node]["count"]*2)  # Taille proportionnelle
-
-        node_trace = go.Scatter(
-            x=node_x, y=node_y, 
-            mode="markers+text",
-            text=[node for node in G.nodes()],
-            hovertext=node_text,
-            hoverinfo="text",
-            marker=dict(color=node_color, size=node_size, line_width=2)
-        )
-
-        # Figure finale
-        fig_net = go.Figure(data=[edge_trace, node_trace],
-                             layout=go.Layout(
-                                 title="Réseau hiérarchique des copublications",
-                                 showlegend=False,
-                                 hovermode="closest",
-                                 plot_bgcolor="#f9f9f9",
-                                 paper_bgcolor="#f9f9f9"
-                             ))
-
-        st.plotly_chart(fig_net, use_container_width=True)
-        st.info(f"Réseau généré avec {len(G.nodes)} nœuds et {len(G.edges)} arêtes.")
-
+        # Afficher la figure
+        st.plotly_chart(fig, use_container_width=True)
 
 # -------------------
 # Onglet 3 : Carte interactive Heatmap
