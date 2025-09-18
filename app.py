@@ -271,7 +271,11 @@ with tab3:
             arcs_data = []
             for center in inria_centers:
                 for _, row in df_map.iterrows():
-
+                    arcs_data.append({
+                        "source_position": [center["lon"], center["lat"], 0],
+                        "target_position": [row["Longitude"], row["Latitude"], arc_elevation / 3],
+                        "color": center["color"]
+        })
 
 # -------------------
 # Onglet 4 : Contact
