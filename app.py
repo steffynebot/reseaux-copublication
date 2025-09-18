@@ -217,7 +217,7 @@ with tab2:
         st.plotly_chart(fig_net, use_container_width=True)
 
 # -------------------
-# Onglet 3 : Carte PyDeck avec HexagonLayer + arcs
+# Onglet 3 : Carte PyDeck avec HexagonLayer + arcs modernes
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
@@ -240,6 +240,7 @@ with tab3:
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
+            # Préparer les positions
             df_map['position'] = df_map.apply(lambda row: [row['Longitude'], row['Latitude']], axis=1)
             centers_data = pd.DataFrame([{"position": [c["lon"], c["lat"]], "name": c["name"], "color": c["color"]} for c in inria_centers])
 
@@ -251,8 +252,8 @@ with tab3:
                 radius=hex_radius,
                 elevation_scale=50,
                 elevation_range=[0, 1000],
-                pickable=True,
                 extruded=True,
+                pickable=True,
                 coverage=1
             )
 
@@ -266,41 +267,11 @@ with tab3:
                 pickable=True,
             )
 
-            # ArcLayer pour les arcs depuis chaque centre
+            # ArcLayer modernisé pour arcs fins et bas
             arcs_data = []
             for center in inria_centers:
                 for _, row in df_map.iterrows():
-                    arcs_data.append({
-                        "source_position": [center["lon"], center["lat"], 0],
-                        "target_position": [row["Longitude"], row["Latitude"], arc_elevation],
-                        "color": center["color"]
-                    })
 
-            arc_layer = pdk.Layer(
-                "ArcLayer",
-                data=arcs_data,
-                get_source_position="source_position",
-                get_target_position="target_position",
-                get_source_color="color",
-                get_target_color="color",
-                get_width=3,
-                pickable=True,
-            )
-
-            view_state = pdk.ViewState(
-                latitude=44.0,
-                longitude=6.0,
-                zoom=4,
-                pitch=40
-            )
-
-            r = pdk.Deck(
-                layers=[hex_layer, scatter_layer, arc_layer],
-                initial_view_state=view_state,
-                tooltip={"text": "Copubliants\nElevation: {elevationValue}"}
-            )
-
-            st.pydeck_chart(r)
 
 # -------------------
 # Onglet 4 : Contact
