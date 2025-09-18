@@ -154,10 +154,10 @@ with tab1:
 
     # KPI principaux
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Publications", total_pubs, delta=f"{delta_pubs} 📈" if delta_pubs >=0 else f"{delta_pubs} 📉")
-    col2.metric("Villes", total_villes, emoji="🏙️")
-    col3.metric("Auteurs Inria", total_auteurs_inria, emoji="👩‍🔬")
-    col4.metric("Auteurs copubliants", total_auteurs_copub, emoji="🤝")
+    col1.metric("Publications", total_pubs, delta=f"{delta_pubs}"if delta_pubs >=0 else f"{delta_pubs} ")
+    col2.metric("Villes", total_villes)
+    col3.metric("Auteurs Inria", total_auteurs_inria)
+    col4.metric("Auteurs copubliants", total_auteurs_copub)
 
     # Publications par centre
     if not df_filtered.empty:
