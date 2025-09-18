@@ -57,14 +57,30 @@ hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_cop
 ville_col, org_col, annee_col, equipe_col, centre_col = "Ville", "Organisme_copubliant", "Année", "Equipe", "Centre"
 
 # -------------------
-# Sidebar filtres
+# Sidebar filtres améliorée
 # -------------------
 with st.sidebar:
-    st.markdown(f"<div style='background-color:{SIDEBAR_COLOR};padding:10px;border-radius:0.5rem'>", unsafe_allow_html=True)
+    # Conteneur principal sans fond bleu
+    st.markdown("<div style='padding:10px;border-radius:0.5rem;'>", unsafe_allow_html=True)
+
+    # Texte "proposé par le groupe DATALAKE" en background léger
+    st.markdown("""
+        <div style='background-color:#f0f0f0;padding:10px;border-radius:0.5rem;text-align:center;margin-bottom:10px;font-size:12px;color:#555;'>
+            Proposé par le groupe <b>DATALAKE</b> : Kumar Guha, Daniel Da Silva et Andréa NEBOT
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Logo
     try:
-        st.image("logo.png", use_container_width=True)
+        st.image("logo.png", use_column_width=True)
     except:
         st.markdown("**Logo manquant**")
+
+    # Texte "DATALAKE" sous le logo
+    st.markdown("""
+        <h3 style='text-align:center;margin-top:5px;color:#111;'>DATALAKE</h3>
+    """, unsafe_allow_html=True)
+
     st.markdown("---")
     st.header("Filtres")
 
@@ -74,9 +90,8 @@ with st.sidebar:
     annees = st.multiselect("Années", sorted(df[annee_col].dropna().unique()))
     equipes = st.multiselect("Équipes", sorted(df[equipe_col].dropna().unique()))
 
-    st.markdown("---")
-    st.markdown(f"<p style='text-align:center;color:{PRIMARY_COLOR}'>Proposé par <b>Andréa NEBOT</b></p>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
+
 
 # -------------------
 # Filtrage
