@@ -216,66 +216,69 @@ with tab2:
                                              paper_bgcolor=BACKGROUND_COLOR))
         st.plotly_chart(fig_net, use_container_width=True)
 
+import pydeck as pdk
+
 # -------------------
-# Onglet 3 : Carte PyDeck avec HexagonLayer + arcs modernes
+# Onglet 3 : Carte interactive
 # -------------------
 with tab3:
-    st.header("Carte copublications Italie")
-
-    # Sidebar pour paramètres interactifs
-    st.sidebar.subheader("Options carte")
-    hex_radius = st.sidebar.slider("Rayon HexagonLayer (mètres)", min_value=1000, max_value=20000, value=5000, step=1000)
-    arc_elevation = st.sidebar.slider("Hauteur des arcs", min_value=1000, max_value=20000, value=5000, step=500)
-
+    st.header("Carte des copublications")
     if st.button("Générer la carte"):
+        # Filtrer les données pour les centres Inria sélectionnés
         df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
-            # Définir les centres Inria
+            # Définir les centres Inria avec leurs coordonnées et couleurs
             inria_centers = [
-                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [31, 119, 180]},
-                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [214, 39, 40]}
+                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255, 0, 0]},
+                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0, 0, 255]}
             ]
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
-            # Préparer les positions
-            df_map['position'] = df_map.apply(lambda row: [row['Longitude'], row['Latitude']], axis=1)
-            centers_data = pd.DataFrame([{"position": [c["lon"], c["lat"]], "name": c["name"], "color": c["color"]} for c in inria_centers])
-
-            # HexagonLayer pour la densité
-            hex_layer = pdk.Layer(
-                "HexagonLayer",
-                data=df_map,
-                get_position="position",
-                radius=hex_radius,
-                elevation_scale=50,
-                elevation_range=[0, 1000],
-                extruded=True,
-                pickable=True,
-                coverage=1
-            )
-
-            # ScatterplotLayer pour les centres Inria
-            scatter_layer = pdk.Layer(
-                "ScatterplotLayer",
-                data=centers_data,
-                get_position="position",
-                get_fill_color="color",
-                get_radius=15000,
-                pickable=True,
-            )
-
-            # ArcLayer modernisé pour arcs fins et bas
+            # Préparer les arcs entre les centres Inria et les auteurs copubliants
             arcs_data = []
             for center in inria_centers:
                 for _, row in df_map.iterrows():
                     arcs_data.append({
                         "source_position": [center["lon"], center["lat"], 0],
-                        "target_position": [row["Longitude"], row["Latitude"], arc_elevation / 3],
+                        "target_position": [row["Longitude"], row["Latitude"], 0],
                         "color": center["color"]
-        })
+                    })
+
+            # Créer le layer GreatCircleLayer
+            arcs_layer = pdk.Layer(
+                "GreatCircleLayer",
+                arcs_data,
+                get_stroke_width=2,
+                get_source_position="source_position",
+                get_target_position="target_position",
+                get_source_color="color",
+                get_target_color="color",
+                auto_highlight=True,
+                pickable=True
+            )
+
+            # Définir l'état de la vue initiale
+            view_state = pdk.ViewState(
+                latitude=43.8,
+                longitude=7.0,
+                zoom=5,
+                pitch=45,
+                bearing=0
+            )
+
+            # Créer la carte avec le layer
+            deck = pdk.Deck(
+                layers=[arcs_layer],
+                initial_view_state=view_state,
+                tooltip={"text": "{from_name} → {to_name}"},
+                map_style=pdk.map_styles.CARTO_DARK
+            )
+
+            # Afficher la carte
+            st.pydeck_chart(deck)
 
 # -------------------
 # Onglet 4 : Contact
