@@ -268,13 +268,49 @@ with tab1:
 
 
 # -------------------
-# Onglet 2 : Réseau interactif
+# Onglet 2 : Réseau interactif amélioré
 # -------------------
 with tab2:
-    st.header("Réseau copublication")
+    st.header("Réseau copublication hiérarchique")
+    
     if st.button("Générer le réseau"):
-        G, pos = build_graph(df_filtered)
-        st.info(f"Réseau limité à {len(G.nodes)} nœuds.")
+        import networkx as nx
+        import plotly.graph_objects as go
+        from collections import Counter
+
+        # Création du graphe
+        G = nx.Graph()
+
+        # Couleurs par niveau
+        level_color = {
+            "Centre": "#1f77b4",
+            "Equipe": "#ff7f0e",
+            "Pays": "#2ca02c",
+            "Ville": "#d62728"
+        }
+
+        # Construire le graphe hiérarchique
+        for _, row in df_filtered.iterrows():
+            centre = row["Centre"]
+            equipe = row["Equipe"]
+            pays = row["Pays"]
+            ville = row["Ville"]
+            
+            # Ajouter les nœuds
+            for node, node_type in [(centre, "Centre"), (equipe, "Equipe"), (pays, "Pays"), (ville, "Ville")]:
+                if not G.has_node(node):
+                    G.add_node(node, type=node_type, count=0)
+                G.nodes[node]["count"] += 1  # Compte pour la taille
+
+            # Ajouter les liens
+            G.add_edge(centre, equipe)
+            G.add_edge(equipe, pays)
+            G.add_edge(pays, ville)
+
+        # Positionnement
+        pos = nx.spring_layout(G, seed=42)  # Force-directed layout
+
+        # Traces pour les arêtes
         edge_x, edge_y = [], []
         for edge in G.edges():
             x0, y0 = pos[edge[0]]
@@ -282,30 +318,45 @@ with tab2:
             edge_x += [x0, x1, None]
             edge_y += [y0, y1, None]
 
-        edge_trace = go.Scatter(x=edge_x, y=edge_y,
-                                line=dict(width=0.5, color=NEUTRAL_COLOR),
-                                hoverinfo="none", mode="lines")
-        node_x, node_y, node_text, node_color = [], [], [], []
-        color_map = {"Inria": PRIMARY_COLOR, "Copubliant": SECONDARY_COLOR, "Ville": ACCENT_COLOR}
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=0.5, color="#888"),
+            hoverinfo="none",
+            mode="lines"
+        )
+
+        # Traces pour les nœuds
+        node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
         for node in G.nodes():
             x, y = pos[node]
             node_x.append(x)
             node_y.append(y)
-            node_text.append(node)
-            node_color.append(color_map.get(G.nodes[node]["type"], NEUTRAL_COLOR))
+            node_text.append(f"{node} ({G.nodes[node]['type']}) - {G.nodes[node]['count']} pubs")
+            node_color.append(level_color.get(G.nodes[node]["type"], "#7f7f7f"))
+            node_size.append(10 + G.nodes[node]["count"]*2)  # Taille proportionnelle
 
-        node_trace = go.Scatter(x=node_x, y=node_y, mode="markers+text",
-                                text=node_text, hoverinfo="text",
-                                marker=dict(color=node_color, size=14, line_width=2))
+        node_trace = go.Scatter(
+            x=node_x, y=node_y, 
+            mode="markers+text",
+            text=[node for node in G.nodes()],
+            hovertext=node_text,
+            hoverinfo="text",
+            marker=dict(color=node_color, size=node_size, line_width=2)
+        )
 
+        # Figure finale
         fig_net = go.Figure(data=[edge_trace, node_trace],
-                            layout=go.Layout(title="TOP 10 des copublications par auteurs",
-                                             showlegend=False, hovermode="closest",
-                                             plot_bgcolor=BACKGROUND_COLOR,
-                                             paper_bgcolor=BACKGROUND_COLOR))
-        st.plotly_chart(fig_net, use_container_width=True)
+                             layout=go.Layout(
+                                 title="Réseau hiérarchique des copublications",
+                                 showlegend=False,
+                                 hovermode="closest",
+                                 plot_bgcolor="#f9f9f9",
+                                 paper_bgcolor="#f9f9f9"
+                             ))
 
-import pydeck as pdk
+        st.plotly_chart(fig_net, use_container_width=True)
+        st.info(f"Réseau généré avec {len(G.nodes)} nœuds et {len(G.edges)} arêtes.")
+
 
 # -------------------
 # Onglet 3 : Carte interactive Heatmap
