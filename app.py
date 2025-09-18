@@ -136,47 +136,83 @@ tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublica
 # -------------------
 # Onglet 1 : KPI et graphiques
 # -------------------
+# -------------------
+# Onglet 1 : KPI et graphiques
+# -------------------
 with tab1:
-    st.header("KPI et graphiques")
+    st.header("KPI et graphiques 🚀")
+    
+    # KPI principaux
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Publications (HalID uniques)", df_filtered[hal_col].nunique())
-    col2.metric("Nombre de villes", df_filtered[ville_col].nunique())
-    col3.metric("Auteurs Inria", df_filtered[auteurs_fr_col].nunique())
-    col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique())
+    col1.metric("Publications", df_filtered[hal_col].nunique(), delta=f"{df_filtered[hal_col].nunique()-df_filtered[hal_col].nunique().shift(1, fill_value=0)} 📈")
+    col2.metric("Villes", df_filtered[ville_col].nunique(), emoji="🏙️")
+    col3.metric("Auteurs Inria", df_filtered[auteurs_fr_col].nunique(), emoji="👩‍🔬")
+    col4.metric("Auteurs copubliants", df_filtered[auteurs_copub_col].nunique(), emoji="🤝")
 
     if not df_filtered.empty:
         pubs_centre = df_filtered.groupby(centre_col)[hal_col].nunique().reset_index()
         st.subheader("📍 Publications par centre")
         cols = st.columns(len(pubs_centre))
+        colors = px.colors.qualitative.Vivid
         for i, row in pubs_centre.iterrows():
             cols[i].metric(row[centre_col], row[hal_col])
 
+    # Graphique publications par année
     pubs_year = compute_yearly(df_filtered)
-    fig_year = px.bar(pubs_year, x=annee_col, y=hal_col, title="Publications par année",
-                      color=hal_col, color_continuous_scale=px.colors.sequential.Plasma)
+    fig_year = px.bar(
+        pubs_year,
+        x=annee_col,
+        y=hal_col,
+        title="Publications par année",
+        color=hal_col,
+        color_continuous_scale=px.colors.sequential.Plasma,
+        text=hal_col
+    )
+    fig_year.update_traces(marker_line_color='black', marker_line_width=1.5)
+    fig_year.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
     st.plotly_chart(fig_year, use_container_width=True)
 
+    # Top villes
     top_villes = compute_top(df_filtered, ville_col)
-    fig_villes = go.Figure(data=[go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4)])
-    fig_villes.update_traces(marker=dict(colors=[ACCENT_COLOR]*len(top_villes)))
+    fig_villes = go.Figure(
+        data=[go.Pie(
+            labels=top_villes.index,
+            values=top_villes.values,
+            hole=0.4,
+            marker_colors=px.colors.qualitative.Pastel,
+            pull=[0.05]*len(top_villes),
+            textinfo='label+percent'
+        )]
+    )
     fig_villes.update_layout(title="TOP 10 des villes copubliantes")
     st.plotly_chart(fig_villes, use_container_width=True)
 
+    # Top organismes
     top_orgs = compute_top(df_filtered, org_col)
-    fig_orgs = go.Figure(data=[go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4)])
-    fig_orgs.update_traces(marker=dict(colors=[SECONDARY_COLOR]*len(top_orgs)))
+    fig_orgs = go.Figure(
+        data=[go.Pie(
+            labels=top_orgs.index,
+            values=top_orgs.values,
+            hole=0.4,
+            marker_colors=px.colors.qualitative.Set3,
+            pull=[0.05]*len(top_orgs),
+            textinfo='label+percent'
+        )]
+    )
     fig_orgs.update_layout(title="TOP 10 des organismes copubliants")
     st.plotly_chart(fig_orgs, use_container_width=True)
 
+    # WordCloud
     if "Mots-cles" in df_filtered.columns:
         if st.button("Générer le WordCloud"):
             text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
             if text:
-                wc = make_wordcloud(text)
+                wc = make_wordcloud(text, colormap="magma")
                 fig_wc, ax = plt.subplots(figsize=(10, 5))
                 ax.imshow(wc, interpolation="bilinear")
                 ax.axis("off")
                 st.pyplot(fig_wc)
+
 
 # -------------------
 # Onglet 2 : Réseau interactif
