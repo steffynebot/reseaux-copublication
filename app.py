@@ -235,8 +235,25 @@ with st.sidebar:
         ["Couleur par centre (optimisé)", "Multicolors (visuel)"]
     )
 
+import numpy as np
+
+def make_arc(lat1, lon1, lat2, lon2, n_points=20, curve_height=0.5):
+    """
+    Crée une courbe arrondie entre deux points (lat1, lon1) -> (lat2, lon2).
+    n_points : nombre de points pour lisser la courbe
+    curve_height : facteur d'arrondi (0 = ligne droite, >0 = plus arrondi)
+    """
+    lats = np.linspace(lat1, lat2, n_points)
+    lons = np.linspace(lon1, lon2, n_points)
+
+    # Ajouter un arrondi sur la latitude (effet arc)
+    mid = n_points // 2
+    lats[mid] += curve_height  
+
+    return lats, lons
+
 # -------------------
-# Onglet 3 : Carte interactive avec Plotly + arcs
+# Onglet 3 : Carte interactive avec arcs arrondis
 # -------------------
 with tab3:
     st.header("Carte copublications Italie")
@@ -246,18 +263,12 @@ with tab3:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
             # Coordonnées des centres
-            centers = []
+            centers = [
+                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": "#1f77b4"},
+                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": "#d62728"}
+            ]
             if centres:
-                for c in centres:
-                    if c.lower() == "bordeaux":
-                        centers.append({"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": "#1f77b4"})
-                    elif c.lower() == "sophia":
-                        centers.append({"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": "#d62728"})
-            else:
-                centers = [
-                    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": "#1f77b4"},
-                    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": "#d62728"}
-                ]
+                centers = [c for c in centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
             # Points des copubliants
             fig = px.scatter_mapbox(
@@ -284,48 +295,39 @@ with tab3:
                     name=f"Centre {center['name']}"
                 )
 
-            # -------------------
-            # Mode arcs
-            # -------------------
-            if arc_mode == "Couleur par centre (optimisé)":
-                # Tracer les arcs regroupés par centre
-                for center in centers:
-                    lats, lons = [], []
-                    for _, row in df_map.iterrows():
-                        lats += [center["lat"], row["Latitude"], None]
-                        lons += [center["lon"], row["Longitude"], None]
+            # Arcs arrondis avec hover personnalisé
+            for center in centers:
+                for _, row in df_map.iterrows():
+                    arc_lats, arc_lons = make_arc(center["lat"], center["lon"],
+                                                  row["Latitude"], row["Longitude"],
+                                                  n_points=25, curve_height=1.0)
 
-                    fig.add_scattermapbox(
-                        lat=lats,
-                        lon=lons,
-                        mode="lines",
-                        line=dict(width=1.5, color=center["color"]),
-                        opacity=0.4,
-                        name=f"Arcs {center['name']}"
+                    hover_text = (
+                        f"<b>Auteur copubliant :</b> {row[auteurs_copub_col]}<br>"
+                        f"<b>Pays :</b> {row['Pays']}<br>"
+                        f"<b>Ville :</b> {row['Ville']}"
                     )
 
-            else:  # Multicolors
-                colors = px.colors.qualitative.Set1
-                n_colors = len(colors)
-                for i, center in enumerate(centers):
-                    for j, row in df_map.iterrows():
-                        fig.add_scattermapbox(
-                            lat=[center["lat"], row["Latitude"]],
-                            lon=[center["lon"], row["Longitude"]],
-                            mode="lines",
-                            line=dict(width=1.5, color=colors[(i + j) % n_colors]),
-                            opacity=0.6,
-                            showlegend=False
-                        )
+                    fig.add_scattermapbox(
+                        lat=arc_lats,
+                        lon=arc_lons,
+                        mode="lines",
+                        line=dict(width=1.5, color=center["color"]),
+                        opacity=0.5,
+                        hoverinfo="text",
+                        text=[hover_text] * len(arc_lats),
+                        showlegend=False
+                    )
 
             # Mise en forme
             fig.update_layout(
                 mapbox_style="carto-positron",
-                margin={"r":0,"t":0,"l":0,"b":0},
+                margin={"r": 0, "t": 0, "l": 0, "b": 0},
                 legend=dict(y=0.99, x=0.01)
             )
 
             st.plotly_chart(fig, use_container_width=True)
+
 # -------------------
 # Onglet 4 : Contact
 # -------------------
