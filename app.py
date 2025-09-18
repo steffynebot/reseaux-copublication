@@ -219,7 +219,7 @@ with tab2:
 import pydeck as pdk
 
 # -------------------
-# Onglet 3 : Carte interactive avec Heatmap + arcs
+# Onglet 3 : Carte interactive Heatmap
 # -------------------
 with tab3:
     st.header("Carte des copublications")
@@ -267,29 +267,6 @@ with tab3:
                 pickable=True,
             )
 
-            # GreatCircleLayer pour les arcs entre centres et auteurs
-            arcs_data = []
-            max_arcs = 200  # limite pour performance
-            df_sample = df_map.sample(n=min(len(df_map), max_arcs), random_state=42)
-            for center in inria_centers:
-                for _, row in df_sample.iterrows():
-                    arcs_data.append({
-                        "source_position": [center["lon"], center["lat"], 0],
-                        "target_position": [row["Longitude"], row["Latitude"], 0],
-                        "color": center["color"]
-                    })
-            arcs_layer = pdk.Layer(
-                "GreatCircleLayer",
-                arcs_data,
-                get_source_position="source_position",
-                get_target_position="target_position",
-                get_source_color="color",
-                get_target_color="color",
-                stroke_width=2,
-                pickable=True,
-                auto_highlight=True
-            )
-
             # Vue centrée et ajustée
             view_state = pdk.ViewState(
                 latitude=df_map["Latitude"].mean(),
@@ -301,7 +278,7 @@ with tab3:
 
             # Créer la carte
             deck = pdk.Deck(
-                layers=[heatmap_layer, scatter_layer, arcs_layer],
+                layers=[heatmap_layer, scatter_layer],
                 initial_view_state=view_state,
                 map_style=pdk.map_styles.CARTO_DARK,
                 tooltip={"text": "{name}"}
