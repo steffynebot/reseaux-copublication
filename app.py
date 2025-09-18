@@ -266,66 +266,106 @@ with tab1:
                 ax.axis("off")
                 st.pyplot(fig_wc)
 
-import dash
-from dash import dcc, html
-import dash_cytoscape as cyto
-import pandas as pd
+# -------------------
+# Onglet 2 
+# -------------------
 
-# Chargement des données
-df_filtered = pd.read_csv("ton_fichier.csv")
+import streamlit as st
+import networkx as nx
+import plotly.graph_objects as go
+from collections import Counter
 
-# Préparation des éléments pour Cytoscape
-elements = []
-for _, row in df_filtered.iterrows():
-    centre = row["Centre"]
-    equipe = row["Equipe"]
-    auteur_fr = row["Auteurs_FR"]
-    auteur_cp = row["Auteurs_copubliants"]
-    pays = row["Pays"]
-    ville = row["Ville"]
-    
-    # Ajout des nœuds
-    elements.append({"data": {"id": centre, "label": centre, "type": "Centre"}})
-    elements.append({"data": {"id": equipe, "label": equipe, "type": "Equipe"}})
-    elements.append({"data": {"id": auteur_fr, "label": auteur_fr, "type": "Auteur_FR"}})
-    elements.append({"data": {"id": auteur_cp, "label": auteur_cp, "type": "Auteur_CP"}})
-    elements.append({"data": {"id": pays, "label": pays, "type": "Pays"}})
-    elements.append({"data": {"id": ville, "label": ville, "type": "Ville"}})
-    
-    # Ajout des arêtes
-    elements.append({"data": {"source": centre, "target": equipe}})
-    elements.append({"data": {"source": equipe, "target": auteur_fr}})
-    elements.append({"data": {"source": auteur_fr, "target": auteur_cp}})
-    elements.append({"data": {"source": auteur_cp, "target": pays}})
-    elements.append({"data": {"source": pays, "target": ville}})
+st.header("Réseau copublication hiérarchique")
 
-# Initialisation de l'application Dash
-app = dash.Dash(__name__)
+if st.button("Générer le réseau"):
+    G = nx.DiGraph()
 
-# Configuration de la mise en page de l'application
-app.layout = html.Div([
-    html.H1("Réseau de Copublication"),
-    cyto.Cytoscape(
-        id='cytoscape',
-        elements=elements,
-        layout={'name': 'breadthfirst', 'roots': '[id = "Centre"]'},
-        style={'width': '100%', 'height': '600px'},
-        stylesheet=[
-            {'selector': 'node[type = "Centre"]', 'style': {'background-color': '#1f77b4', 'label': 'data(label)'}},
-            {'selector': 'node[type = "Equipe"]', 'style': {'background-color': '#ff7f0e', 'label': 'data(label)'}},
-            {'selector': 'node[type = "Auteur_FR"]', 'style': {'background-color': '#2ca02c', 'label': 'data(label)'}},
-            {'selector': 'node[type = "Auteur_CP"]', 'style': {'background-color': '#d62728', 'label': 'data(label)'}},
-            {'selector': 'node[type = "Pays"]', 'style': {'background-color': '#9467bd', 'label': 'data(label)'}},
-            {'selector': 'node[type = "Ville"]', 'style': {'background-color': '#8c564b', 'label': 'data(label)'}},
-            {'selector': 'edge', 'style': {'width': 2, 'line-color': '#888'}}
-        ]
+    # Calcul du nombre de publications par ville (HalID unique)
+    pub_count = df_filtered.groupby("Ville")["HalID"].nunique().to_dict()
+
+    # Couleurs par niveau
+    level_color = {
+        "Centre": "#1f77b4",
+        "Equipe": "#ff7f0e",
+        "Auteur_FR": "#2ca02c",
+        "Auteur_CP": "#d62728",
+        "Pays": "#9467bd",
+        "Ville": "#8c564b"
+    }
+
+    # Construction du graphe hiérarchique
+    for _, row in df_filtered.iterrows():
+        nodes = {
+            "Centre": row["Centre"],
+            "Equipe": row["Equipe"],
+            "Auteur_FR": row["Auteurs_FR"],
+            "Auteur_CP": row["Auteurs_copubliants"],
+            "Pays": row["Pays"],
+            "Ville": row["Ville"]
+        }
+
+        for level, node in nodes.items():
+            if not G.has_node(node):
+                G.add_node(node, type=level, count=0)
+            # Compte des publications pour Ville uniquement
+            if level == "Ville":
+                G.nodes[node]["count"] = pub_count.get(node, 1)
+
+        # Ajout des arêtes hiérarchiques
+        G.add_edge(nodes["Centre"], nodes["Equipe"])
+        G.add_edge(nodes["Equipe"], nodes["Auteur_FR"])
+        G.add_edge(nodes["Auteur_FR"], nodes["Auteur_CP"])
+        G.add_edge(nodes["Auteur_CP"], nodes["Pays"])
+        G.add_edge(nodes["Pays"], nodes["Ville"])
+
+    # Layout hiérarchique
+    pos = nx.nx_agraph.graphviz_layout(G, prog="dot")  # Nécessite pygraphviz ou pydot
+
+    # Arêtes
+    edge_x, edge_y = [], []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
+
+    edge_trace = go.Scatter(
+        x=edge_x, y=edge_y,
+        line=dict(width=1, color="#888"),
+        hoverinfo="none",
+        mode="lines"
     )
-])
 
-# Exécution de l'application
-if __name__ == '__main__':
-    app.run_server(debug=True)
+    # Nœuds
+    node_x, node_y, node_text, node_color, node_size = [], [], [], [], []
+    for node in G.nodes():
+        x, y = pos[node]
+        node_x.append(x)
+        node_y.append(y)
+        node_text.append(f"{node} ({G.nodes[node]['type']}) - pubs: {G.nodes[node]['count']}")
+        node_color.append(level_color.get(G.nodes[node]["type"], "#7f7f7f"))
+        node_size.append(10 + G.nodes[node]["count"]*2)  # Taille proportionnelle
 
+    node_trace = go.Scatter(
+        x=node_x, y=node_y,
+        mode="markers+text",
+        text=[node for node in G.nodes()],
+        hovertext=node_text,
+        hoverinfo="text",
+        marker=dict(color=node_color, size=node_size, line_width=2)
+    )
+
+    # Figure
+    fig = go.Figure(data=[edge_trace, node_trace],
+                    layout=go.Layout(
+                        title="Réseau hiérarchique des copublications",
+                        showlegend=False,
+                        hovermode="closest",
+                        plot_bgcolor="#f9f9f9",
+                        paper_bgcolor="#f9f9f9"
+                    ))
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # -------------------
 # Onglet 3 : Carte interactive Heatmap
