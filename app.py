@@ -132,12 +132,8 @@ st.markdown(f"<h1 style='color:{PRIMARY_COLOR}'>Copublications d'auteurs Inria (
 # Tabs
 # -------------------
 tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
-
 # -------------------
-# Onglet 1 : Dashboard moderne
-# -------------------
-# -------------------
-# Onglet 1 : Dashboard Pro
+# Onglet 1 : Dashboard Ultra-Pro
 # -------------------
 with tab1:
     st.markdown("<h2 style='text-align:center;'>KPI et Dashboard</h2>", unsafe_allow_html=True)
@@ -148,10 +144,15 @@ with tab1:
     total_villes = df_filtered[ville_col].nunique()
     total_auteurs_inria = df_filtered[auteurs_fr_col].nunique()
     total_auteurs_copub = df_filtered[auteurs_copub_col].nunique()
+
+    # Publications par centres spécifiques
+    pubs_par_centre = df_filtered.groupby(centre_col)[hal_col].nunique()
+    pubs_bordeaux = df_filtered[df_filtered[ville_col] == "Bordeaux"][hal_col].nunique()
+    pubs_sophia = df_filtered[df_filtered[ville_col] == "Sophia"][hal_col].nunique()
     
     delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else 0
 
-    # ---------------- KPI dans bulles ovales ----------------
+    # ---------------- KPI ovales ----------------
     kpi_style = """
     <div style="
         background: #e0f2f1; 
@@ -166,7 +167,9 @@ with tab1:
         {title}<br><span style='font-size:28px'>{value}</span>{delta}
     </div>
     """
-    kpi_cols = st.columns(4)
+
+    # Création de 7 KPI
+    kpi_cols = st.columns(7)
     kpi_cols[0].markdown(
         kpi_style.format(
             title="Publications",
@@ -178,6 +181,9 @@ with tab1:
     kpi_cols[1].markdown(kpi_style.format(title="Villes", value=total_villes, delta=""), unsafe_allow_html=True)
     kpi_cols[2].markdown(kpi_style.format(title="Auteurs Inria", value=total_auteurs_inria, delta=""), unsafe_allow_html=True)
     kpi_cols[3].markdown(kpi_style.format(title="Auteurs copubliants", value=total_auteurs_copub, delta=""), unsafe_allow_html=True)
+    kpi_cols[4].markdown(kpi_style.format(title="Publications par centre", value=pubs_par_centre.sum(), delta=""), unsafe_allow_html=True)
+    kpi_cols[5].markdown(kpi_style.format(title="Bordeaux", value=pubs_bordeaux, delta=""), unsafe_allow_html=True)
+    kpi_cols[6].markdown(kpi_style.format(title="Sophia", value=pubs_sophia, delta=""), unsafe_allow_html=True)
 
     # ---------------- Graphique Publications par année ----------------
     st.subheader("Publications par année")
