@@ -324,63 +324,71 @@ with tab2:
 # ----------------------
 with tab3:
 
+import pydeck as pdk
+import pandas as pd
+import math
+import numpy as np
+import random
+import streamlit as st
+import time
+
 # ----------------------
 # Préparer les données
 # ----------------------
-    df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
-    
-    cities_df = df_map.groupby("Ville").agg({
-        "Latitude": "mean",
-        "Longitude": "mean",
-        "HalID": "count"
-    }).reset_index()
-    
-    cities_df.rename(columns={
-        "Latitude": "lat",
-        "Longitude": "lon",
-        "Ville": "name",
-        "HalID": "count"
-    }, inplace=True)
-    
-    # ----------------------
-    # Top 100 villes en bleu
-    # ----------------------
-    top100_cities = cities_df.nlargest(100, "count")["name"].tolist()
-    
-    # ----------------------
-    # Taille des cercles
-    # ----------------------
-    def compute_radius(row):
-        base_radius = math.sqrt(row["count"]) * 3000
-        if row["name"] in top100_cities:
-            return base_radius * 1.5
-        return base_radius
-    
-    cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
-    
-    # ----------------------
-    # Palette pour les autres villes
-    # ----------------------
-    palette = [
-        [255,128,0,180],  # orange
-        [255,255,0,180],  # yellow
-        [128,255,0,180],  # chartreuse
-        [0,255,0,180],    # green
-        [0,255,128,180],  # spring green
-        [0,255,255,180],  # cyan
-        [0,128,255,180],  # dodger blue
-        [128,0,255,180],  # purple
-        [255,0,255,180],  # violet
-        [255,0,128,180]   # magenta
-    ]
-    
-    colors = []
-    for _, row in cities_df.iterrows():
-        if row["name"] in top100_cities:
-            colors.append([0,0,255,200])
-        else:
-            colors.append(random.choice(palette))
-    cities_df["color"] = colors
+df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
+
+cities_df = df_map.groupby("Ville").agg({
+    "Latitude": "mean",
+    "Longitude": "mean",
+    "HalID": "count"
+}).reset_index()
+
+cities_df.rename(columns={
+    "Latitude": "lat",
+    "Longitude": "lon",
+    "Ville": "name",
+    "HalID": "count"
+}, inplace=True)
+
+# ----------------------
+# Top 100 villes en bleu
+# ----------------------
+top100_cities = cities_df.nlargest(100, "count")["name"].tolist()
+
+# ----------------------
+# Taille des cercles
+# ----------------------
+def compute_radius(row):
+    base_radius = math.sqrt(row["count"]) * 3000
+    if row["name"] in top100_cities:
+        return base_radius * 1.5
+    return base_radius
+
+cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
+
+# ----------------------
+# Palette pour les autres villes
+# ----------------------
+palette = [
+    [255,128,0,180],  # orange
+    [255,255,0,180],  # yellow
+    [128,255,0,180],  # chartreuse
+    [0,255,0,180],    # green
+    [0,255,128,180],  # spring green
+    [0,255,255,180],  # cyan
+    [0,128,255,180],  # dodger blue
+    [128,0,255,180],  # purple
+    [255,0,255,180],  # violet
+    [255,0,128,180]   # magenta
+]
+
+colors = []
+for _, row in cities_df.iterrows():
+    if row["name"] in top100_cities:
+        colors.append([0,0,255,200])
+    else:
+        colors.append(random.choice(palette))
+cities_df["color"] = colors
 
 # ----------------------
 # ScatterplotLayer pour toutes les villes
