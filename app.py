@@ -137,14 +137,13 @@ with tab1:
     pubs_sophia = df_filtered[df_filtered[ville_col] == "Sophia"][hal_col].nunique()
     delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else 0
 
-    kpi_cols = st.columns(7)
-    kpi_cols[0].metric("Publications", total_pubs, delta_pubs)
-    kpi_cols[1].metric("Villes", total_villes)
-    kpi_cols[2].metric("Auteurs Inria", total_auteurs_inria)
-    kpi_cols[3].metric("Auteurs copubliants", total_auteurs_copub)
-    kpi_cols[4].metric("Publications par centre", pubs_par_centre.sum())
-    kpi_cols[5].metric("Bordeaux", pubs_bordeaux)
-    kpi_cols[6].metric("Sophia", pubs_sophia)
+    kpi_cols[1].metric("Villes", int(total_villes))
+    kpi_cols[2].metric("Auteurs Inria", int(total_auteurs_inria))
+    kpi_cols[3].metric("Auteurs copubliants", int(total_auteurs_copub))
+    kpi_cols[4].metric("Publications par centre", int(pubs_par_centre.sum()))
+    kpi_cols[5].metric("Bordeaux", int(pubs_bordeaux))
+    kpi_cols[6].metric("Sophia", int(pubs_sophia))
+
 
     st.markdown("---")
     st.subheader("Publications par année")
