@@ -24,20 +24,19 @@ is_dark = theme == "dark"
 # -------------------
 # Couleurs selon le mode
 # -------------------
+# === Palette Adobe UI/UX ===
 if is_dark:
-    PRIMARY_COLOR = "#83c9ff"
-    SECONDARY_COLOR = "#ffabab"
-    ACCENT_COLOR = "#7defa1"
-    NEUTRAL_COLOR = "#d5dae5"
-    BACKGROUND_COLOR = "#004280"
-    SIDEBAR_COLOR = "#0068c9"
+    PRIMARY_COLOR   = "#B4C0D9"   # textes / accents clairs
+    SECONDARY_COLOR = "#023059"   # sidebar / titres
+    BACKGROUND_COLOR= "#0D0D0D"   # fond principal dark
+    ACCENT_COLOR    = "#BF1111"   # alertes
+    NEUTRAL_COLOR   = "#F2F2F2"   # textes neutres sur fond sombre
 else:
-    PRIMARY_COLOR = "#0484fc"
-    SECONDARY_COLOR = "#faa48a"
-    ACCENT_COLOR = "#4cada3"
-    NEUTRAL_COLOR = "#9ebfd2"
-    BACKGROUND_COLOR = "#e4f5ff"
-    SIDEBAR_COLOR = "#c7ebff"
+    PRIMARY_COLOR   = "#023059"   # titres, boutons
+    SECONDARY_COLOR = "#B4C0D9"   # cartes, hovers
+    BACKGROUND_COLOR= "#F2F2F2"   # fond global clair
+    ACCENT_COLOR    = "#BF1111"   # alertes
+    NEUTRAL_COLOR   = "#0D0D0D"   # textes
 
 # -------------------
 # Load data
