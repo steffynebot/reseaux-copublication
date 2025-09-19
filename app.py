@@ -478,7 +478,7 @@ with tab4:
         </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
-    st.header(f"<span style='color:{SECONDARY_COLOR}'>📬 Formulaire de contact</span>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color:{SECONDARY_COLOR}'>📬 Formulaire de contact</h3>", unsafe_allow_html=True)
     with st.form("contact_form", clear_on_submit=True):
         nom = st.text_input("Votre nom")
         email = st.text_input("Votre email")
