@@ -339,12 +339,12 @@ cities_df.rename(columns={
     "HalID": "count"
 }, inplace=True)
 
-top20_cities = cities_df.nlargest(20, "count")["name"].tolist()
+top20_cities = cities_df.nlargest(50, count")["name"].tolist()
 
 # Taille des cercles
 def compute_radius(row):
     base_radius = math.sqrt(row["count"]) * 3000
-    if row["name"] in top20_cities:
+    if row["name"] in top50_cities:
         return base_radius * 1.5
     else:
         return base_radius
@@ -357,12 +357,12 @@ max_count = cities_df["count"].max()
 
 colors = []
 for _, row in cities_df.iterrows():
-    if row["name"] in top20_cities:
-        colors.append([255,0,0,200])  # rouge top 20
+    if row["name"] in top50_cities:
+        colors.append([255,0,0,200])  # rouge top50
     else:
         norm = (row["count"] - min_count) / (max_count - min_count + 1e-6)
-        r = int(50 + 205*norm)  # 50 → 255
-        g = int(50 + 205*(1-norm))  # 255 → 50
+        r = int(50 + 205*norm)
+        g = int(50 + 205*(1-norm))
         b = int(255*(1-norm))
         colors.append([r, g, b, 180])
 cities_df["color"] = colors
@@ -387,31 +387,22 @@ scatter_layer = pdk.Layer(
 )
 
 # ----------------------
-# Logos Inria avec IconLayer
+# Emoji pour les centres Inria (Bordeaux et Sophia)
 # ----------------------
 inria_centers = [
-    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
-    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
+    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "emoji": "🏢"},
+    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "emoji": "🏢"}
 ]
 centers_df = pd.DataFrame(inria_centers)
 
-# Assurez-vous que le logo.png est accessible par Streamlit
-# Ici on suppose qu'il est dans le même dossier que app.py
-icon_data = {
-    "url": "logo.png",  # chemin relatif
-    "width": 128,
-    "height": 128,
-    "anchorY": 128
-}
-centers_df["icon_data"] = [icon_data] * len(centers_df)
-
-icon_layer = pdk.Layer(
-    type="IconLayer",
-    data=centers_df,
-    get_icon="icon_data",
-    get_size=4,  # ajustable
-    size_scale=15,
+text_layer = pdk.Layer(
+    "TextLayer",
+    centers_df,
     get_position=["lon","lat"],
+    get_text="emoji",
+    get_color=[255, 255, 255],
+    get_size=30,  # taille de l’emoji
+    get_alignment_baseline="'bottom'",
     pickable=True,
     tooltip={"text": "{name}"}
 )
@@ -431,13 +422,14 @@ view_state = pdk.ViewState(
 # Deck
 # ----------------------
 deck = pdk.Deck(
-    layers=[scatter_layer, icon_layer],
+    layers=[scatter_layer, text_layer],
     initial_view_state=view_state,
     map_style=pdk.map_styles.CARTO_DARK,
     tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
 )
 
 st.pydeck_chart(deck)
+
 
 
 # -------------------
