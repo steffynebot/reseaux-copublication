@@ -6,6 +6,7 @@ import networkx as nx
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import pydeck as pdk
+import plotly.graph_objects as go
 
 # -------------------
 # Page config
@@ -167,17 +168,7 @@ with tab1:
 
     st.markdown("---")
 
-
-    import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
-
-st.subheader("Publications par années")
-import plotly.express as px
-import plotly.graph_objects as go
-import streamlit as st
-
-st.subheader("📊 Publications par années")
+    st.subheader("Publications par années")
 
 # Palette de bleus moderne (de clair à foncé)
     blue_scale = px.colors.sequential.Blues  # dégradé intégré Plotly
