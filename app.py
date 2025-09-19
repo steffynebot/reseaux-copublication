@@ -339,7 +339,7 @@ cities_df.rename(columns={
     "HalID": "count"
 }, inplace=True)
 
-top50_cities = cities_df.nlargest(50, count")["name"].tolist()
+top50_cities = cities_df.nlargest(50, "count")["name"].tolist()
 
 # Taille des cercles
 def compute_radius(row):
