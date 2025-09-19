@@ -314,104 +314,84 @@ with tab2:
                                               hovermode="closest", plot_bgcolor="#ffffff", paper_bgcolor="#ffffff"))
         st.plotly_chart(fig_net, use_container_width=True)
 
-# -------------------
-# Onglet 3 : Carte interactive
-# -------------------
-with tab3:
-    st.header("Carte des copublications")
-    if st.button("Générer la carte"):
-        df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
-        if df_map.empty:
-            st.warning("Aucune donnée valide pour tracer la carte.")
-        else:
-            # Centres Inria
-            inria_centers = [
-                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255,0,0]},
-                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0,0,255]}
-            ]
-            if centres:
-                inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
+import pydeck as pdk
+import pandas as pd
+import math
 
-            # DataFrame pour Heatmap
-            heatmap_df = pd.DataFrame({
-                "lon": df_map["Longitude"],
-                "lat": df_map["Latitude"]
-            })
-            heatmap_layer = pdk.Layer(
-                "HeatmapLayer",
-                heatmap_df,
-                get_position=["lon","lat"],
-                get_weight=1,
-                radius_pixels=25,
-                opacity=0.6,
-                threshold=0.03
-            )
+# ----------------------
+# Préparer les données
+# ----------------------
+df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
 
-            # DataFrame pour Scatter des centres
-            centers_df = pd.DataFrame({
-                "lon": [c["lon"] for c in inria_centers],
-                "lat": [c["lat"] for c in inria_centers],
-                "name": [c["name"] for c in inria_centers],
-                "color": [c["color"] for c in inria_centers]
-            })
-            scatter_layer = pdk.Layer(
-                "ScatterplotLayer",
-                centers_df,
-                get_position=["lon","lat"],
-                get_fill_color="color",
-                get_radius=15000,
-                pickable=True
-            )
+# Grouper par ville pour calculer le nombre de publications
+cities_df = df_map.groupby("Ville").agg({
+    "Latitude": "mean",
+    "Longitude": "mean",
+    "Titre": "count"  # nombre de publications
+}).reset_index()
+cities_df.rename(columns={"Latitude":"lat", "Longitude":"lon", "Ville":"name", "Titre":"count"}, inplace=True)
 
-            # TextLayer pour les centres
-            text_centers_layer = pdk.Layer(
-                "TextLayer",
-                centers_df,
-                get_position=["lon","lat"],
-                get_text="name",
-                get_color=[255, 255, 255],
-                get_size=16,
-                get_alignment_baseline="'bottom'",
-                pickable=False
-            )
+# Calcul de la taille des cercles proportionnelle au nombre de publications
+cities_df["radius"] = cities_df["count"].apply(lambda x: math.sqrt(x) * 5000)  # ajustable
 
-            # Grouper df_map par ville pour afficher leur nom
-            cities_df = df_map.groupby("Ville").agg({
-                "Latitude": "mean",
-                "Longitude": "mean"
-            }).reset_index()
-            cities_df.rename(columns={"Latitude":"lat", "Longitude":"lon", "Ville":"name"}, inplace=True)
+# ----------------------
+# ScatterplotLayer
+# ----------------------
+scatter_layer = pdk.Layer(
+    "ScatterplotLayer",
+    cities_df,
+    pickable=True,
+    stroked=True,
+    filled=True,
+    radius_scale=1,
+    radius_min_pixels=5,
+    radius_max_pixels=100,
+    line_width_min_pixels=1,
+    get_position=["lon","lat"],
+    get_radius="radius",
+    get_fill_color=[0, 100, 255, 180],  # bleu semi-transparent
+    get_line_color=[0, 0, 0],
+)
 
-            # TextLayer pour toutes les villes
-            text_cities_layer = pdk.Layer(
-                "TextLayer",
-                cities_df,
-                get_position=["lon","lat"],
-                get_text="name",
-                get_color=[200, 200, 200],  # gris clair
-                get_size=12,
-                get_alignment_baseline="'bottom'",
-                pickable=False
-            )
+# ----------------------
+# TextLayer pour afficher les noms
+# ----------------------
+text_layer = pdk.Layer(
+    "TextLayer",
+    cities_df,
+    get_position=["lon","lat"],
+    get_text="name",
+    get_size="count",  # taille proportionnelle au nombre de publications
+    get_color=[255,255,255],
+    get_alignment_baseline="'bottom'",
+    pickable=False
+)
 
-            # ViewState
-            view_state = pdk.ViewState(
-                latitude=df_map["Latitude"].mean(),
-                longitude=df_map["Longitude"].mean(),
-                zoom=5,
-                pitch=45,
-                bearing=0
-            )
+# ----------------------
+# ViewState
+# ----------------------
+view_state = pdk.ViewState(
+    latitude=df_map["Latitude"].mean(),
+    longitude=df_map["Longitude"].mean(),
+    zoom=5,
+    pitch=45,
+    bearing=0
+)
 
-            # Deck avec Heatmap + Scatter + Text (centres + villes)
-            deck = pdk.Deck(
-                layers=[heatmap_layer, scatter_layer, text_centers_layer, text_cities_layer],
-                initial_view_state=view_state,
-                map_style=pdk.map_styles.CARTO_DARK,
-                tooltip={"text":"{name}"}
-            )
+# ----------------------
+# Deck avec tooltip affichant le nombre de publications
+# ----------------------
+deck = pdk.Deck(
+    layers=[scatter_layer, text_layer],
+    initial_view_state=view_state,
+    map_style=pdk.map_styles.CARTO_DARK,
+    tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
+)
 
-            st.pydeck_chart(deck)
+# ----------------------
+# Affichage dans Streamlit
+# ----------------------
+st.pydeck_chart(deck)
 
 # -------------------
 # Onglet 4 : Contact
