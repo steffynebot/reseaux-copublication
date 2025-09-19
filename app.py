@@ -319,9 +319,6 @@ with tab2:
 # ----------------------
 # onglet 3
 # ----------------------
-import pydeck as pdk
-import pandas as pd
-import math
 
 # ----------------------
 # Préparer les données
