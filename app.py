@@ -48,7 +48,7 @@ if df.empty:
 
 # Colonnes
 hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_copubliants"
-ville_col, org_col, annee_col, equipe_col, centre_col = "Ville", "Organisme_copubliant", "Année", "Equipe", "Centre"
+ville_col, org_col, annee_col, equipe_col, centre_col, pays_col = "Ville", "Organisme_copubliant", "Année", "Equipe", "Centre", "Pays"
 
 # -------------------
 # Sidebar filtres
@@ -62,6 +62,7 @@ with st.sidebar:
     st.markdown("### Filtres")
     
     centres = st.multiselect("Centre", sorted(df[centre_col].dropna().unique()))
+    pays = st.multiselect("Pays", sorted(df[pays_col].dropna().unique()))
     villes = st.selectbox("Ville", ["Toutes"] + sorted(df[ville_col].dropna().unique()))
     organismes = st.multiselect("Organismes copubliants", sorted(df[org_col].dropna().unique()))
     annees = st.multiselect("Années", sorted(df[annee_col].dropna().unique()))
