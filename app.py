@@ -322,12 +322,7 @@ with tab2:
 # ----------------------
 # onglet 3
 # ----------------------
-import pydeck as pdk
-import pandas as pd
-import math
-import numpy as np
-import random
-import streamlit as st
+
 
 # ----------------------
 # Préparer les données
