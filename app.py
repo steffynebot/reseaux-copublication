@@ -314,6 +314,11 @@ with tab2:
                                               hovermode="closest", plot_bgcolor="#ffffff", paper_bgcolor="#ffffff"))
         st.plotly_chart(fig_net, use_container_width=True)
 
+
+
+# ----------------------
+# onglet 3
+# ----------------------
 import pydeck as pdk
 import pandas as pd
 import math
@@ -321,15 +326,22 @@ import math
 # ----------------------
 # Préparer les données
 # ----------------------
-df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
+df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
 
-# Grouper par ville pour calculer le nombre de publications
+# Grouper par ville pour calculer le nombre de publications (via HalID)
 cities_df = df_map.groupby("Ville").agg({
     "Latitude": "mean",
     "Longitude": "mean",
-    "Titre": "count"  # nombre de publications
+    "HalID": "count"  # nombre de publications par ville
 }).reset_index()
-cities_df.rename(columns={"Latitude":"lat", "Longitude":"lon", "Ville":"name", "Titre":"count"}, inplace=True)
+
+# Renommer les colonnes pour PyDeck
+cities_df.rename(columns={
+    "Latitude": "lat",
+    "Longitude": "lon",
+    "Ville": "name",
+    "HalID": "count"
+}, inplace=True)
 
 # Calcul de la taille des cercles proportionnelle au nombre de publications
 cities_df["radius"] = cities_df["count"].apply(lambda x: math.sqrt(x) * 5000)  # ajustable
@@ -354,7 +366,7 @@ scatter_layer = pdk.Layer(
 )
 
 # ----------------------
-# TextLayer pour afficher les noms
+# TextLayer pour afficher les noms des villes
 # ----------------------
 text_layer = pdk.Layer(
     "TextLayer",
@@ -392,6 +404,7 @@ deck = pdk.Deck(
 # Affichage dans Streamlit
 # ----------------------
 st.pydeck_chart(deck)
+
 
 # -------------------
 # Onglet 4 : Contact
