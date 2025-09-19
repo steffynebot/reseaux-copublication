@@ -41,7 +41,7 @@ else:
 # -------------------
 @st.cache_data
 def load_data():
-    df = pd.read_excel("Copubliants_par_auteur_Inria_concat.xlsx")
+    df = pd.read_excel("Copubliants_par_auteur_Inria_Bordeaux_Sophia.xlsx")
     df.columns = [str(c).strip().replace("\xa0", "").replace(" ", "_") for c in df.columns]
     return df
 
