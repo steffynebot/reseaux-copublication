@@ -54,11 +54,11 @@ ville_col, org_col, annee_col, equipe_col, centre_col, pays_col = "Ville", "Orga
 # Sidebar filtres
 # -------------------
 with st.sidebar:
-    st.caption("Proposé par le groupe **DATALAKE** : Kumar Guha, Daniel Da Silva et Andréa NEBOT")
     try:
         st.image("logo.png", use_container_width=True)
     except:
         st.caption("Logo manquant")
+        st.caption("***DATALAKE***")
     st.markdown("### Filtres")
     
     centres = st.multiselect("Centre", sorted(df[centre_col].dropna().unique()))
