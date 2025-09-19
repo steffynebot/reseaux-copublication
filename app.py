@@ -326,6 +326,10 @@ with tab3:
         else:
             # Comptage du nombre de publications par ville
             city_counts = df_map.groupby(["Ville", "Latitude", "Longitude"]).size().reset_index(name="count")
+            max_count = city_counts["count"].max()
+            city_counts["radius"] = city_counts["count"] / max_count * 20000 + 5000  # taille visible
+            city_counts["color"] = city_counts["count"].apply(lambda x: [0, 0, min(255, int(50 + (x/max_count)*205))])
+            city_counts.rename(columns={"Longitude":"lon", "Latitude":"lat"}, inplace=True)
 
             # Centres Inria
             inria_centers = [
@@ -334,30 +338,39 @@ with tab3:
             ]
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
-
-            # DataFrame pour les centres Inria
             centers_df = pd.DataFrame({
                 "lon": [c["lon"] for c in inria_centers],
                 "lat": [c["lat"] for c in inria_centers],
                 "name": [c["name"] for c in inria_centers],
-                "count": [city_counts['count'].max()] * len(inria_centers),  # taille max pour les centres
-                "color": [[255, 0, 0]] * len(inria_centers)  # rouge
+                "count": [max_count] * len(inria_centers),
+                "radius": [25000] * len(inria_centers),
+                "color": [[255,0,0]] * len(inria_centers)
             })
 
-            # DataFrame pour les autres villes
-            city_df = city_counts.copy()
-            city_df["color"] = city_df["count"].apply(lambda x: [0, 0, min(255, int(50 + x*5))])  # nuances de bleu
-            city_df.rename(columns={"Longitude":"lon", "Latitude":"lat"}, inplace=True)
+            # Combiner toutes les villes pour le scatter
+            scatter_df = pd.concat([centers_df, city_counts], ignore_index=True)
 
-            # Scatterplot Layer
+            # ScatterplotLayer
             scatter_layer = pdk.Layer(
                 "ScatterplotLayer",
-                pd.concat([centers_df, city_df], ignore_index=True),
+                scatter_df,
                 get_position=["lon","lat"],
                 get_fill_color="color",
-                get_radius="count",  # taille proportionnelle au nombre de publications
+                get_radius="radius",
                 pickable=True,
                 auto_highlight=True
+            )
+
+            # TextLayer pour afficher le nom des villes
+            text_layer = pdk.Layer(
+                "TextLayer",
+                scatter_df,
+                get_position=["lon","lat"],
+                get_text="name",
+                get_size=16,
+                get_color=[255, 255, 255],
+                get_alignment_baseline="'bottom'",
+                pickable=False
             )
 
             # ViewState
@@ -369,15 +382,16 @@ with tab3:
                 bearing=0
             )
 
-            # Deck avec tooltip pour afficher le nom
+            # Deck avec Scatter + Text
             deck = pdk.Deck(
-                layers=[scatter_layer],
+                layers=[scatter_layer, text_layer],
                 initial_view_state=view_state,
                 map_style=pdk.map_styles.CARTO_DARK,
                 tooltip={"text":"{name}\nPublications: {count}"}
             )
 
             st.pydeck_chart(deck)
+
 
 # -------------------
 # Onglet 4 : Contact
