@@ -324,51 +324,72 @@ with tab3:
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
-            # Comptage du nombre de publications par ville
-            city_counts = df_map.groupby(["Ville", "Latitude", "Longitude"]).size().reset_index(name="count")
-            max_count = city_counts["count"].max()
-            city_counts["radius"] = city_counts["count"] / max_count * 20000 + 5000  # taille visible
-            city_counts["color"] = city_counts["count"].apply(lambda x: [0, 0, min(255, int(50 + (x/max_count)*205))])
-            city_counts.rename(columns={"Longitude":"lon", "Latitude":"lat"}, inplace=True)
-
             # Centres Inria
             inria_centers = [
-                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
-                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
+                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255,0,0]},
+                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0,0,255]}
             ]
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
+
+            # DataFrame pour Heatmap
+            heatmap_df = pd.DataFrame({
+                "lon": df_map["Longitude"],
+                "lat": df_map["Latitude"]
+            })
+            heatmap_layer = pdk.Layer(
+                "HeatmapLayer",
+                heatmap_df,
+                get_position=["lon","lat"],
+                get_weight=1,
+                radius_pixels=25,
+                opacity=0.6,
+                threshold=0.03
+            )
+
+            # DataFrame pour Scatter des centres
             centers_df = pd.DataFrame({
                 "lon": [c["lon"] for c in inria_centers],
                 "lat": [c["lat"] for c in inria_centers],
                 "name": [c["name"] for c in inria_centers],
-                "count": [max_count] * len(inria_centers),
-                "radius": [25000] * len(inria_centers),
-                "color": [[255,0,0]] * len(inria_centers)
+                "color": [c["color"] for c in inria_centers]
             })
-
-            # Combiner toutes les villes pour le scatter
-            scatter_df = pd.concat([centers_df, city_counts], ignore_index=True)
-
-            # ScatterplotLayer
             scatter_layer = pdk.Layer(
                 "ScatterplotLayer",
-                scatter_df,
+                centers_df,
                 get_position=["lon","lat"],
                 get_fill_color="color",
-                get_radius="radius",
-                pickable=True,
-                auto_highlight=True
+                get_radius=15000,
+                pickable=True
             )
 
-            # TextLayer pour afficher le nom des villes
-            text_layer = pdk.Layer(
+            # TextLayer pour les centres
+            text_centers_layer = pdk.Layer(
                 "TextLayer",
-                scatter_df,
+                centers_df,
                 get_position=["lon","lat"],
                 get_text="name",
-                get_size=16,
                 get_color=[255, 255, 255],
+                get_size=16,
+                get_alignment_baseline="'bottom'",
+                pickable=False
+            )
+
+            # Grouper df_map par ville pour afficher leur nom
+            cities_df = df_map.groupby("Ville").agg({
+                "Latitude": "mean",
+                "Longitude": "mean"
+            }).reset_index()
+            cities_df.rename(columns={"Latitude":"lat", "Longitude":"lon", "Ville":"name"}, inplace=True)
+
+            # TextLayer pour toutes les villes
+            text_cities_layer = pdk.Layer(
+                "TextLayer",
+                cities_df,
+                get_position=["lon","lat"],
+                get_text="name",
+                get_color=[200, 200, 200],  # gris clair
+                get_size=12,
                 get_alignment_baseline="'bottom'",
                 pickable=False
             )
@@ -382,16 +403,15 @@ with tab3:
                 bearing=0
             )
 
-            # Deck avec Scatter + Text
+            # Deck avec Heatmap + Scatter + Text (centres + villes)
             deck = pdk.Deck(
-                layers=[scatter_layer, text_layer],
+                layers=[heatmap_layer, scatter_layer, text_centers_layer, text_cities_layer],
                 initial_view_state=view_state,
                 map_style=pdk.map_styles.CARTO_DARK,
-                tooltip={"text":"{name}\nPublications: {count}"}
+                tooltip={"text":"{name}"}
             )
 
             st.pydeck_chart(deck)
-
 
 # -------------------
 # Onglet 4 : Contact
