@@ -155,8 +155,8 @@ with tab1:
     ]
 
     cols = st.columns(len(kpi_data))
-    for col, (label, value, delta) in zip(cols, kpi_data):
-        col.metric(label, int(value), delta=int(delta) if delta is not None else None)
+    for col, (label, value) in zip(cols, kpi_data):
+        col.metric(label, int(value))
 
     st.markdown("---")
     st.subheader("Publications par année")
