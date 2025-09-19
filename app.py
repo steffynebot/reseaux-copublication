@@ -58,7 +58,8 @@ with st.sidebar:
         st.image("logo.png", use_container_width=True)
     except:
         st.caption("Logo manquant")
-        st.caption("***DATALAKE***")
+    st.markdown("### DATALAKE")
+    
     st.markdown("### Filtres")
     
     centres = st.multiselect("Centre", sorted(df[centre_col].dropna().unique()))
@@ -67,6 +68,7 @@ with st.sidebar:
     organismes = st.multiselect("Organismes copubliants", sorted(df[org_col].dropna().unique()))
     annees = st.multiselect("Années", sorted(df[annee_col].dropna().unique()))
     equipes = st.multiselect("Équipes", sorted(df[equipe_col].dropna().unique()))
+
     
     # Texte en bas du contenu des filtres
     st.caption(
