@@ -374,6 +374,28 @@ with tab3:
     cities_df["color"] = colors
 
     # ----------------------
+    # Centres Inria (texte seulement)
+    # ----------------------
+    inria_centers = [
+        {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
+        {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
+    ]
+    centers_df = pd.DataFrame(inria_centers)
+
+    text_layer = pdk.Layer(
+        "TextLayer",
+        data=centers_df,
+        get_position=["lon","lat"],
+        get_text="name",
+        get_size=40,               # taille plus grande pour visibilité
+        get_color=[0,255,0],
+        get_alignment_baseline="bottom",
+        get_pixel_offset=[0, -20], # décale le texte au-dessus des cercles
+        billboard=True,
+        pickable=True
+    )
+
+    # ----------------------
     # ScatterplotLayer pour toutes les villes
     # ----------------------
     scatter_layer = pdk.Layer(
@@ -393,28 +415,6 @@ with tab3:
     )
 
     # ----------------------
-    # Centres Inria (texte seulement)
-    # ----------------------
-    inria_centers = [
-        {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
-        {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
-    ]
-    centers_df = pd.DataFrame(inria_centers)
-
-    text_layer = pdk.Layer(
-        "TextLayer",
-        data=centers_df,
-        get_position=["lon","lat"],
-        get_text="name",
-        get_size=20,
-        get_color=[0,255,0],
-        get_alignment_baseline="bottom",
-        get_pixel_offset=[0, 0],  # Décalage si besoin
-        billboard=True,
-        pickable=True
-    )
-
-    # ----------------------
     # ViewState
     # ----------------------
     view_state = pdk.ViewState(
@@ -429,7 +429,7 @@ with tab3:
     # Deck
     # ----------------------
     deck = pdk.Deck(
-        layers=[scatter_layer, text_layer],
+        layers=[text_layer, scatter_layer], # TextLayer avant pour être visible
         initial_view_state=view_state,
         map_style=pdk.map_styles.CARTO_DARK,
         tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
