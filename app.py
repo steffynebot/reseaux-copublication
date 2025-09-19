@@ -321,9 +321,8 @@ with tab2:
 # onglet 3
 # ----------------------
 
-
 # ----------------------
-# Préparer les données
+# Préparer les données filtrées
 # ----------------------
 df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
 
@@ -334,30 +333,35 @@ cities_df = df_map.groupby("Ville").agg({
     "HalID": "count"
 }).reset_index()
 
-cities_df.rename(columns={"Latitude": "lat", "Longitude": "lon", "Ville": "name", "HalID": "count"}, inplace=True)
+cities_df.rename(columns={
+    "Latitude": "lat",
+    "Longitude": "lon",
+    "Ville": "name",
+    "HalID": "count"
+}, inplace=True)
 
-# Calcul de la taille des cercles proportionnelle au nombre de publications
+# ----------------------
+# Sélectionner les 20 villes avec le plus de publications
+# ----------------------
+cities_df = cities_df.nlargest(20, "count").copy()
+
+# Taille des cercles proportionnelle au nombre de publications
 cities_df["radius"] = cities_df["count"].apply(lambda x: math.sqrt(x) * 5000)  # ajustable
 
-# Couleur multicolore selon le nombre de publications
-# On crée un gradient du bleu clair au rouge foncé
+# Couleur multicolore dynamique selon le nombre de publications
 min_count = cities_df["count"].min()
 max_count = cities_df["count"].max()
 colors = []
-
 for c in cities_df["count"]:
-    # Normalisation 0-1
     norm = (c - min_count) / (max_count - min_count + 1e-6)
-    # Couleur RGB : du bleu au rouge
     r = int(255 * norm)
-    g = 50
+    g = int(50 * (1 - norm))
     b = int(255 * (1 - norm))
-    colors.append([r, g, b, 180])  # 180 = alpha semi-transparent
-
+    colors.append([r, g, b, 200])
 cities_df["color"] = colors
 
 # ----------------------
-# ScatterplotLayer
+# ScatterplotLayer avec effet pulse pour les 20 plus actives
 # ----------------------
 scatter_layer = pdk.Layer(
     "ScatterplotLayer",
@@ -366,13 +370,17 @@ scatter_layer = pdk.Layer(
     stroked=True,
     filled=True,
     radius_scale=1,
-    radius_min_pixels=5,
+    radius_min_pixels=10,
     radius_max_pixels=100,
     line_width_min_pixels=1,
     get_position=["lon","lat"],
     get_radius="radius",
     get_fill_color="color",
     get_line_color=[0,0,0],
+    # Effet "pulse" avec get_elevation pour simuler animation (facile à ajuster)
+    get_elevation="radius",  
+    elevation_scale=0.1,
+    extruded=True
 )
 
 # ----------------------
@@ -425,7 +433,6 @@ deck = pdk.Deck(
 # Affichage dans Streamlit
 # ----------------------
 st.pydeck_chart(deck)
-
 
 
 # -------------------
