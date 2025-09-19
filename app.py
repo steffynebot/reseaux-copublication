@@ -421,7 +421,7 @@ centers_df = pd.DataFrame(inria_centers)
 
 # Icône (logo ou emoji) pour les centres
 icon_data = {
-    "url": "logo.png",  # chemin vers le PNG emoji/logo INRA
+    "url": "icon.png",  # chemin vers le PNG emoji/logo INRA
     "width": 32,
     "height": 32,
     "anchorY": 32
@@ -439,13 +439,13 @@ icon_layer = pdk.Layer(
     tooltip={"text": "{name}"}
 )
 
-# TextLayer pour afficher le nom des centres en gras et vert
+# TextLayer pour afficher le nom des centres en gras et vert (taille réduite)
 text_layer = pdk.Layer(
     "TextLayer",
     data=centers_df,
     get_position=["lon","lat"],
     get_text="name",
-    get_size=24,
+    get_size=16,  # taille réduite
     get_color=[0,255,0],
     get_alignment_baseline="'bottom'",
     pickable=False,
