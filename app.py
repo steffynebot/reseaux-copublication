@@ -321,6 +321,7 @@ with tab2:
 # onglet 3
 # ----------------------
 
+
 # ----------------------
 # Préparer les données
 # ----------------------
@@ -339,32 +340,46 @@ cities_df.rename(columns={
     "HalID": "count"
 }, inplace=True)
 
-top50_cities = cities_df.nlargest(50, "count")["name"].tolist()
+top20_cities = cities_df.nlargest(20, "count")["name"].tolist()
 
 # Taille des cercles
 def compute_radius(row):
     base_radius = math.sqrt(row["count"]) * 3000
-    if row["name"] in top50_cities:
-        return base_radius * 1.5
-    else:
-        return base_radius
+    return base_radius * 1.5 if row["name"] in top20_cities else base_radius
 
 cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
 
-# Couleurs multicolores
+# ----------------------
+# Palette et interpolation fluide
+# ----------------------
+palette = [
+    [255, 0, 0, 180],      # rouge
+    [0, 0, 255, 180],      # bleu
+    [128, 0, 128, 180],    # violet
+    [255, 255, 255, 180],  # blanc
+    [0, 255, 0, 180]       # vert
+]
+
+def interpolate_color(norm):
+    # norm doit être entre 0 et 1
+    n = len(palette) - 1
+    idx = min(int(norm * n), n-1)
+    frac = (norm * n) - idx
+    c1 = np.array(palette[idx])
+    c2 = np.array(palette[idx+1])
+    return (c1 + (c2 - c1) * frac).astype(int).tolist()
+
 min_count = cities_df["count"].min()
 max_count = cities_df["count"].max()
 
 colors = []
 for _, row in cities_df.iterrows():
-    if row["name"] in top50_cities:
-        colors.append([255,0,0,200])  # rouge top50
+    if row["name"] in top20_cities:
+        colors.append([255,0,0,200])
     else:
         norm = (row["count"] - min_count) / (max_count - min_count + 1e-6)
-        r = int(50 + 205*norm)
-        g = int(50 + 205*(1-norm))
-        b = int(255*(1-norm))
-        colors.append([r, g, b, 180])
+        colors.append(interpolate_color(norm))
+
 cities_df["color"] = colors
 
 # ----------------------
@@ -387,7 +402,7 @@ scatter_layer = pdk.Layer(
 )
 
 # ----------------------
-# Emoji pour les centres Inria (Bordeaux et Sophia)
+# Emoji pour les centres Inria
 # ----------------------
 inria_centers = [
     {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "emoji": "🏢"},
@@ -401,7 +416,7 @@ text_layer = pdk.Layer(
     get_position=["lon","lat"],
     get_text="emoji",
     get_color=[255, 255, 255],
-    get_size=30,  # taille de l’emoji
+    get_size=30,
     get_alignment_baseline="'bottom'",
     pickable=True,
     tooltip={"text": "{name}"}
@@ -429,6 +444,7 @@ deck = pdk.Deck(
 )
 
 st.pydeck_chart(deck)
+
 
 
 
