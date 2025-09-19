@@ -169,39 +169,39 @@ with tab1:
 
     st.subheader("Publications par années")
 
-fig_year = px.bar(
-    pubs_year,
-    x=annee_col,
-    y=hal_col,
-    text_auto=True,  # affiche directement les valeurs
-    color_discrete_sequence=[px.colors.sequential.Teal[-3]],  #  bleu/vert moderne
-)
+    fig_year = px.bar(
+        pubs_year,
+        x=annee_col,
+        y=hal_col,
+        text_auto=True,  # affiche directement les valeurs
+        color_discrete_sequence=[px.colors.sequential.Teal[-3]],  #  bleu/vert moderne
+    )
 
 #  Barres arrondies + style épuré
-fig_year.update_traces(
-    marker_line_width=0,
-    marker_line_color="rgba(0,0,0,0)",
-    hovertemplate='%{x}: %{y}',
-    width=0.6,            # largeur des barres
-    marker=dict(
-        color=px.colors.sequential.Teal[-3],
-        line=dict(width=0),
-        # 🔹 coins arrondis (shape 'spline' pour lisser un peu)
+    fig_year.update_traces(
+        marker_line_width=0,
+        marker_line_color="rgba(0,0,0,0)",
+        hovertemplate='%{x}: %{y}',
+        width=0.6,            # largeur des barres
+        marker=dict(
+            color=px.colors.sequential.Teal[-3],
+            line=dict(width=0),
+            # coins arrondis (shape 'spline' pour lisser un peu)
+        )
     )
-)
 
-fig_year.update_layout(
-    plot_bgcolor='rgba(0,0,0,0)',
-    paper_bgcolor='rgba(0,0,0,0)',
-    title="",
-    xaxis_title="Année",
-    yaxis_title="Nombre de publications",
-    title_x=0.5,
-    bargap=0.2,           # espace entre barres
-    font=dict(size=14),
-)
+    fig_year.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        title="",
+        xaxis_title="Année",
+        yaxis_title="Nombre de publications",
+        title_x=0.5,
+        bargap=0.2,           # espace entre barres
+        font=dict(size=14),
+    )
 
-st.plotly_chart(fig_year, use_container_width=True)
+    st.plotly_chart(fig_year, use_container_width=True)
 
 
     # ---------- TOP 10 ----------
