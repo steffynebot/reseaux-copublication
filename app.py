@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import pydeck as pdk
 import math
 import time
+import numpy as np
 
 # -------------------
 # Page config
