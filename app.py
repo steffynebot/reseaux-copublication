@@ -135,23 +135,22 @@ with tab1:
     pubs_par_centre = df_filtered.groupby(centre_col)[hal_col].nunique()
     pubs_bordeaux = df_filtered[df_filtered[ville_col] == "Bordeaux"][hal_col].nunique()
     pubs_sophia = df_filtered[df_filtered[ville_col] == "Sophia"][hal_col].nunique()
-    delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else 0
+    delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else None
+    delta_pubs_val = int(delta_pubs) if delta_pubs is not None else None
 
     kpi_data = [
-    ("Publications", total_pubs, delta_pubs_val),
-    ("Villes", total_villes, None),
-    ("Auteurs Inria", total_auteurs_inria, None),
-    ("Auteurs copubliants", total_auteurs_copub, None),
-    ("Publications par centre", pubs_par_centre.sum(), None),
-    ("Bordeaux", pubs_bordeaux, None),
-    ("Sophia", pubs_sophia, None),
-]
+        ("Publications", total_pubs, delta_pubs_val),
+        ("Villes", total_villes, None),
+        ("Auteurs Inria", total_auteurs_inria, None),
+        ("Auteurs copubliants", total_auteurs_copub, None),
+        ("Publications par centre", pubs_par_centre.sum(), None),
+        ("Bordeaux", pubs_bordeaux, None),
+        ("Sophia", pubs_sophia, None),
+    ]
 
-cols = st.columns(len(kpi_data))
-for col, (label, value, delta) in zip(cols, kpi_data):
-    col.metric(label, int(value), delta=int(delta) if delta is not None else None)
-
-
+    cols = st.columns(len(kpi_data))
+    for col, (label, value, delta) in zip(cols, kpi_data):
+        col.metric(label, int(value), delta=int(delta) if delta is not None else None)
 
     st.markdown("---")
     st.subheader("Publications par année")
