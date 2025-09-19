@@ -321,6 +321,12 @@ with tab2:
 # onglet 3
 # ----------------------
 
+import pydeck as pdk
+import pandas as pd
+import math
+import numpy as np
+import streamlit as st
+
 # ----------------------
 # Préparer les données
 # ----------------------
@@ -341,6 +347,7 @@ cities_df.rename(columns={
 
 top20_cities = cities_df.nlargest(20, "count")["name"].tolist()
 
+# Taille des cercles
 def compute_radius(row):
     base_radius = math.sqrt(row["count"]) * 3000
     if row["name"] in top20_cities:
@@ -351,20 +358,24 @@ def compute_radius(row):
 cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
 
 # Couleurs multicolores
-colors = []
 min_count = cities_df["count"].min()
 max_count = cities_df["count"].max()
+
+colors = []
 for _, row in cities_df.iterrows():
     if row["name"] in top20_cities:
-        colors.append([255, 0, 0, 200])
+        colors.append([255,0,0,200])  # rouge top 20
     else:
         norm = (row["count"] - min_count) / (max_count - min_count + 1e-6)
-        r = int(255 * norm)
-        g = int(50 * (1 - norm))
-        b = int(255 * (1 - norm))
+        r = int(50 + 205*norm)  # 50 → 255
+        g = int(50 + 205*(1-norm))  # 255 → 50
+        b = int(255*(1-norm))
         colors.append([r, g, b, 180])
 cities_df["color"] = colors
 
+# ----------------------
+# ScatterplotLayer
+# ----------------------
 scatter_layer = pdk.Layer(
     "ScatterplotLayer",
     cities_df,
@@ -390,53 +401,49 @@ inria_centers = [
 ]
 centers_df = pd.DataFrame(inria_centers)
 
+# Assurez-vous que le logo.png est accessible par Streamlit
+# Ici on suppose qu'il est dans le même dossier que app.py
 icon_data = {
-    "url": "logo.png",
+    "url": "logo.png",  # chemin relatif
     "width": 128,
     "height": 128,
     "anchorY": 128
 }
 centers_df["icon_data"] = [icon_data] * len(centers_df)
 
+icon_layer = pdk.Layer(
+    type="IconLayer",
+    data=centers_df,
+    get_icon="icon_data",
+    get_size=4,  # ajustable
+    size_scale=15,
+    get_position=["lon","lat"],
+    pickable=True,
+    tooltip={"text": "{name}"}
+)
+
 # ----------------------
-# Animation pulse
+# ViewState
 # ----------------------
-# On va faire varier la taille du logo entre 4 et 6 en boucle
-size_values = [4, 5, 6, 5]  # pulsation simple
+view_state = pdk.ViewState(
+    latitude=df_map["Latitude"].mean(),
+    longitude=df_map["Longitude"].mean(),
+    zoom=5,
+    pitch=45,
+    bearing=0
+)
 
-placeholder = st.empty()  # pour redessiner à chaque étape
+# ----------------------
+# Deck
+# ----------------------
+deck = pdk.Deck(
+    layers=[scatter_layer, icon_layer],
+    initial_view_state=view_state,
+    map_style=pdk.map_styles.CARTO_DARK,
+    tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
+)
 
-for size in size_values * 10:  # répéter 10 fois pour l'exemple
-    icon_layer = pdk.Layer(
-        "IconLayer",
-        data=centers_df,
-        get_icon="icon_data",
-        get_size=size,
-        size_scale=15,
-        get_position=["lon", "lat"],
-        pickable=True,
-        tooltip={"text": "{name}"}
-    )
-
-    view_state = pdk.ViewState(
-        latitude=df_map["Latitude"].mean(),
-        longitude=df_map["Longitude"].mean(),
-        zoom=5,
-        pitch=45,
-        bearing=0
-    )
-
-    deck = pdk.Deck(
-        layers=[scatter_layer, icon_layer],
-        initial_view_state=view_state,
-        map_style=pdk.map_styles.CARTO_DARK,
-        tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
-    )
-
-    placeholder.pydeck_chart(deck)
-    time.sleep(0.3)  # vitesse du pulse
-
-
+st.pydeck_chart(deck)
 
 
 # -------------------
