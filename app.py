@@ -321,7 +321,11 @@ with tab2:
 # ----------------------
 # onglet 3
 # ----------------------
-
+import pydeck as pdk
+import pandas as pd
+import math
+import numpy as np
+import streamlit as st
 
 # ----------------------
 # Préparer les données
@@ -351,7 +355,7 @@ def compute_radius(row):
 cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
 
 # ----------------------
-# Palette et interpolation fluide
+# Gradient fluide multicolore
 # ----------------------
 palette = [
     [255, 0, 0, 180],      # rouge
@@ -362,7 +366,6 @@ palette = [
 ]
 
 def interpolate_color(norm):
-    # norm doit être entre 0 et 1
     n = len(palette) - 1
     idx = min(int(norm * n), n-1)
     frac = (norm * n) - idx
@@ -403,22 +406,30 @@ scatter_layer = pdk.Layer(
 )
 
 # ----------------------
-# Emoji pour les centres Inria
+# IconLayer pour centres Inria
 # ----------------------
 inria_centers = [
-    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "emoji": "🏢"},
-    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "emoji": "🏢"}
+    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
+    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
 ]
 centers_df = pd.DataFrame(inria_centers)
 
-text_layer = pdk.Layer(
-    "TextLayer",
-    centers_df,
+# Assurez-vous d'avoir un petit PNG 32x32 avec l'emoji/logo INRA
+icon_data = {
+    "url": "emoji.png",  # chemin vers le PNG emoji/centre
+    "width": 32,
+    "height": 32,
+    "anchorY": 32
+}
+centers_df["icon_data"] = [icon_data] * len(centers_df)
+
+icon_layer = pdk.Layer(
+    type="IconLayer",
+    data=centers_df,
+    get_icon="icon_data",
+    get_size=4,
+    size_scale=15,
     get_position=["lon","lat"],
-    get_text="emoji",
-    get_color=[255, 255, 255],
-    get_size=30,
-    get_alignment_baseline="'bottom'",
     pickable=True,
     tooltip={"text": "{name}"}
 )
@@ -438,14 +449,13 @@ view_state = pdk.ViewState(
 # Deck
 # ----------------------
 deck = pdk.Deck(
-    layers=[scatter_layer, text_layer],
+    layers=[scatter_layer, icon_layer],
     initial_view_state=view_state,
     map_style=pdk.map_styles.CARTO_DARK,
     tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
 )
 
 st.pydeck_chart(deck)
-
 
 
 
