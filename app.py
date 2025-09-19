@@ -326,135 +326,135 @@ with tab3:
 # ----------------------
 # Préparer les données
 # ----------------------
-df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
-
-cities_df = df_map.groupby("Ville").agg({
-    "Latitude": "mean",
-    "Longitude": "mean",
-    "HalID": "count"
-}).reset_index()
-
-cities_df.rename(columns={
-    "Latitude": "lat",
-    "Longitude": "lon",
-    "Ville": "name",
-    "HalID": "count"
-}, inplace=True)
-
-# ----------------------
-# Top 100 villes en bleu
-# ----------------------
-top100_cities = cities_df.nlargest(100, "count")["name"].tolist()
-
-# ----------------------
-# Taille des cercles
-# ----------------------
-def compute_radius(row):
-    base_radius = math.sqrt(row["count"]) * 3000
-    if row["name"] in top100_cities:
-        return base_radius * 1.5
-    return base_radius
-
-cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
-
-# ----------------------
-# Palette pour les autres villes
-# ----------------------
-palette = [
-    [255,128,0,180],  # orange
-    [255,255,0,180],  # yellow
-    [128,255,0,180],  # chartreuse
-    [0,255,0,180],    # green
-    [0,255,128,180],  # spring green
-    [0,255,255,180],  # cyan
-    [0,128,255,180],  # dodger blue
-    [128,0,255,180],  # purple
-    [255,0,255,180],  # violet
-    [255,0,128,180]   # magenta
-]
-
-colors = []
-for _, row in cities_df.iterrows():
-    if row["name"] in top100_cities:
-        colors.append([0,0,255,200])
-    else:
-        colors.append(random.choice(palette))
-cities_df["color"] = colors
-
-# ----------------------
-# ScatterplotLayer pour toutes les villes
-# ----------------------
-scatter_layer = pdk.Layer(
-    "ScatterplotLayer",
-    cities_df,
-    pickable=True,
-    stroked=True,
-    filled=True,
-    radius_scale=1,
-    radius_min_pixels=5,
-    radius_max_pixels=100,
-    line_width_min_pixels=1,
-    get_position=["lon","lat"],
-    get_radius="radius",
-    get_fill_color="color",
-    get_line_color=[0,0,0],
-)
-
-# ----------------------
-# Emoji pour les centres
-# ----------------------
-inria_centers = [
-    {"name": "Centre Inria Bordeaux", "lat": 44.833328, "lon": -0.56667, "emoji": "🏢"},
-    {"name": "Centre Inria Sophia", "lat": 43.6200, "lon": 7.0500, "emoji": "🏢"}
-]
-centers_df = pd.DataFrame(inria_centers)
-
-# Fonction pour effet pulse (taille variable)
-def get_pulse_sizes(step):
-    return [24 + 4*math.sin(step), 24 + 4*math.cos(step)]
-
-# ----------------------
-# TextLayer pour centres avec emoji + nom
-# ----------------------
-step = time.time() % 1000  # simple animation
-pulse_sizes = get_pulse_sizes(step)
-
-text_layer = pdk.Layer(
-    "TextLayer",
-    data=centers_df,
-    get_position=["lon","lat"],
-    get_text="'{emoji} {name}'",
-    get_size=pulse_sizes[0],
-    get_color=[0,255,0],
-    get_alignment_baseline="'bottom'",
-    pickable=True,
-    billboard=True
-)
-
-# ----------------------
-# ViewState
-# ----------------------
-view_state = pdk.ViewState(
-    latitude=df_map["Latitude"].mean(),
-    longitude=df_map["Longitude"].mean(),
-    zoom=5,
-    pitch=45,
-    bearing=0
-)
-
-# ----------------------
-# Deck
-# ----------------------
-deck = pdk.Deck(
-    layers=[scatter_layer, text_layer],
-    initial_view_state=view_state,
-    map_style=pdk.map_styles.CARTO_DARK,
-    tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
-)
-
-st.pydeck_chart(deck)
-
-
+    df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
+    
+    cities_df = df_map.groupby("Ville").agg({
+        "Latitude": "mean",
+        "Longitude": "mean",
+        "HalID": "count"
+    }).reset_index()
+    
+    cities_df.rename(columns={
+        "Latitude": "lat",
+        "Longitude": "lon",
+        "Ville": "name",
+        "HalID": "count"
+    }, inplace=True)
+    
+    # ----------------------
+    # Top 100 villes en bleu
+    # ----------------------
+    top100_cities = cities_df.nlargest(100, "count")["name"].tolist()
+    
+    # ----------------------
+    # Taille des cercles
+    # ----------------------
+    def compute_radius(row):
+        base_radius = math.sqrt(row["count"]) * 3000
+        if row["name"] in top100_cities:
+            return base_radius * 1.5
+        return base_radius
+    
+    cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
+    
+    # ----------------------
+    # Palette pour les autres villes
+    # ----------------------
+    palette = [
+        [255,128,0,180],  # orange
+        [255,255,0,180],  # yellow
+        [128,255,0,180],  # chartreuse
+        [0,255,0,180],    # green
+        [0,255,128,180],  # spring green
+        [0,255,255,180],  # cyan
+        [0,128,255,180],  # dodger blue
+        [128,0,255,180],  # purple
+        [255,0,255,180],  # violet
+        [255,0,128,180]   # magenta
+    ]
+    
+    colors = []
+    for _, row in cities_df.iterrows():
+        if row["name"] in top100_cities:
+            colors.append([0,0,255,200])
+        else:
+            colors.append(random.choice(palette))
+    cities_df["color"] = colors
+    
+    # ----------------------
+    # ScatterplotLayer pour toutes les villes
+    # ----------------------
+    scatter_layer = pdk.Layer(
+        "ScatterplotLayer",
+        cities_df,
+        pickable=True,
+        stroked=True,
+        filled=True,
+        radius_scale=1,
+        radius_min_pixels=5,
+        radius_max_pixels=100,
+        line_width_min_pixels=1,
+        get_position=["lon","lat"],
+        get_radius="radius",
+        get_fill_color="color",
+        get_line_color=[0,0,0],
+    )
+    
+    # ----------------------
+    # Emoji pour les centres
+    # ----------------------
+    inria_centers = [
+        {"name": "Centre Inria Bordeaux", "lat": 44.833328, "lon": -0.56667, "emoji": "🏢"},
+        {"name": "Centre Inria Sophia", "lat": 43.6200, "lon": 7.0500, "emoji": "🏢"}
+    ]
+    centers_df = pd.DataFrame(inria_centers)
+    
+    # Fonction pour effet pulse (taille variable)
+    def get_pulse_sizes(step):
+        return [24 + 4*math.sin(step), 24 + 4*math.cos(step)]
+    
+    # ----------------------
+    # TextLayer pour centres avec emoji + nom
+    # ----------------------
+    step = time.time() % 1000  # simple animation
+    pulse_sizes = get_pulse_sizes(step)
+    
+    text_layer = pdk.Layer(
+        "TextLayer",
+        data=centers_df,
+        get_position=["lon","lat"],
+        get_text="'{emoji} {name}'",
+        get_size=pulse_sizes[0],
+        get_color=[0,255,0],
+        get_alignment_baseline="'bottom'",
+        pickable=True,
+        billboard=True
+    )
+    
+    # ----------------------
+    # ViewState
+    # ----------------------
+    view_state = pdk.ViewState(
+        latitude=df_map["Latitude"].mean(),
+        longitude=df_map["Longitude"].mean(),
+        zoom=5,
+        pitch=45,
+        bearing=0
+    )
+    
+    # ----------------------
+    # Deck
+    # ----------------------
+    deck = pdk.Deck(
+        layers=[scatter_layer, text_layer],
+        initial_view_state=view_state,
+        map_style=pdk.map_styles.CARTO_DARK,
+        tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
+    )
+    
+    st.pydeck_chart(deck)
+    
+    
 
 # -------------------
 # Onglet 4 : Contact
