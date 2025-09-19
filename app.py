@@ -6,8 +6,8 @@ import networkx as nx
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import pydeck as pdk
-import plotly.graph_objects as go
 import math
+import time
 
 # -------------------
 # Page config
@@ -322,11 +322,10 @@ with tab2:
 # ----------------------
 
 # ----------------------
-# Préparer les données filtrées
+# Préparer les données
 # ----------------------
 df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
 
-# Grouper par ville pour compter le nombre de publications
 cities_df = df_map.groupby("Ville").agg({
     "Latitude": "mean",
     "Longitude": "mean",
@@ -340,29 +339,32 @@ cities_df.rename(columns={
     "HalID": "count"
 }, inplace=True)
 
-# ----------------------
-# Sélectionner les 20 villes avec le plus de publications
-# ----------------------
-cities_df = cities_df.nlargest(20, "count").copy()
+top20_cities = cities_df.nlargest(20, "count")["name"].tolist()
 
-# Taille des cercles proportionnelle au nombre de publications
-cities_df["radius"] = cities_df["count"].apply(lambda x: math.sqrt(x) * 5000)  # ajustable
+def compute_radius(row):
+    base_radius = math.sqrt(row["count"]) * 3000
+    if row["name"] in top20_cities:
+        return base_radius * 1.5
+    else:
+        return base_radius
 
-# Couleur multicolore dynamique selon le nombre de publications
+cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
+
+# Couleurs multicolores
+colors = []
 min_count = cities_df["count"].min()
 max_count = cities_df["count"].max()
-colors = []
-for c in cities_df["count"]:
-    norm = (c - min_count) / (max_count - min_count + 1e-6)
-    r = int(255 * norm)
-    g = int(50 * (1 - norm))
-    b = int(255 * (1 - norm))
-    colors.append([r, g, b, 200])
+for _, row in cities_df.iterrows():
+    if row["name"] in top20_cities:
+        colors.append([255, 0, 0, 200])
+    else:
+        norm = (row["count"] - min_count) / (max_count - min_count + 1e-6)
+        r = int(255 * norm)
+        g = int(50 * (1 - norm))
+        b = int(255 * (1 - norm))
+        colors.append([r, g, b, 180])
 cities_df["color"] = colors
 
-# ----------------------
-# ScatterplotLayer avec effet pulse pour les 20 plus actives
-# ----------------------
 scatter_layer = pdk.Layer(
     "ScatterplotLayer",
     cities_df,
@@ -370,69 +372,71 @@ scatter_layer = pdk.Layer(
     stroked=True,
     filled=True,
     radius_scale=1,
-    radius_min_pixels=10,
+    radius_min_pixels=5,
     radius_max_pixels=100,
     line_width_min_pixels=1,
     get_position=["lon","lat"],
     get_radius="radius",
     get_fill_color="color",
     get_line_color=[0,0,0],
-    # Effet "pulse" avec get_elevation pour simuler animation (facile à ajuster)
-    get_elevation="radius",  
-    elevation_scale=0.1,
-    extruded=True
 )
 
 # ----------------------
-# TextLayer pour les centres Inria seulement
+# Logos Inria avec IconLayer
 # ----------------------
 inria_centers = [
-    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255,0,0]},
-    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0,0,255]}
+    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
+    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
 ]
-centers_df = pd.DataFrame({
-    "lon": [c["lon"] for c in inria_centers],
-    "lat": [c["lat"] for c in inria_centers],
-    "name": [c["name"] for c in inria_centers],
-    "color": [c["color"] for c in inria_centers]
-})
+centers_df = pd.DataFrame(inria_centers)
 
-text_layer = pdk.Layer(
-    "TextLayer",
-    centers_df,
-    get_position=["lon","lat"],
-    get_text="name",
-    get_color=[255,255,255],
-    get_size=16,
-    get_alignment_baseline="'bottom'",
-    pickable=False
-)
+icon_data = {
+    "url": "logo.png",
+    "width": 128,
+    "height": 128,
+    "anchorY": 128
+}
+centers_df["icon_data"] = [icon_data] * len(centers_df)
 
 # ----------------------
-# ViewState
+# Animation pulse
 # ----------------------
-view_state = pdk.ViewState(
-    latitude=df_map["Latitude"].mean(),
-    longitude=df_map["Longitude"].mean(),
-    zoom=5,
-    pitch=45,
-    bearing=0
-)
+# On va faire varier la taille du logo entre 4 et 6 en boucle
+size_values = [4, 5, 6, 5]  # pulsation simple
 
-# ----------------------
-# Deck avec tooltip
-# ----------------------
-deck = pdk.Deck(
-    layers=[scatter_layer, text_layer],
-    initial_view_state=view_state,
-    map_style=pdk.map_styles.CARTO_DARK,
-    tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
-)
+placeholder = st.empty()  # pour redessiner à chaque étape
 
-# ----------------------
-# Affichage dans Streamlit
-# ----------------------
-st.pydeck_chart(deck)
+for size in size_values * 10:  # répéter 10 fois pour l'exemple
+    icon_layer = pdk.Layer(
+        "IconLayer",
+        data=centers_df,
+        get_icon="icon_data",
+        get_size=size,
+        size_scale=15,
+        get_position=["lon", "lat"],
+        pickable=True,
+        tooltip={"text": "{name}"}
+    )
+
+    view_state = pdk.ViewState(
+        latitude=df_map["Latitude"].mean(),
+        longitude=df_map["Longitude"].mean(),
+        zoom=5,
+        pitch=45,
+        bearing=0
+    )
+
+    deck = pdk.Deck(
+        layers=[scatter_layer, icon_layer],
+        initial_view_state=view_state,
+        map_style=pdk.map_styles.CARTO_DARK,
+        tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
+    )
+
+    placeholder.pydeck_chart(deck)
+    time.sleep(0.3)  # vitesse du pulse
+
+
 
 
 # -------------------
