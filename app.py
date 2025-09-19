@@ -67,18 +67,11 @@ with st.sidebar:
     organismes = st.multiselect("Organismes copubliants", sorted(df[org_col].dropna().unique()))
     annees = st.multiselect("Années", sorted(df[annee_col].dropna().unique()))
     equipes = st.multiselect("Équipes", sorted(df[equipe_col].dropna().unique()))
-
-     # --- Texte en bas ---
-    st.markdown(
-        """
-        <div style="position: fixed; bottom: 0; left: 0; width: 100%;
-                    padding: 10px 5px; background-color: rgba(0,0,0,0);
-                    font-size: 0.9em;">
-        Proposé par le groupe <b>DATALAKE</b> : Kumar Guha, Daniel Da Silva et Andréa NEBOT  
-        à la demande de Luigi Liquori et Maria Kazolea
-        </div>
-        """,
-        unsafe_allow_html=True
+    
+    # Texte en bas du contenu des filtres
+    st.caption(
+        "Proposé par le groupe **DATALAKE** : Kumar Guha, Daniel Da Silva et Andréa Nebot  \n"
+        "à la demande de Luigi Liquori et Maria Kazolea"
     )
     
 # -------------------
