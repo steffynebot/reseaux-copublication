@@ -395,7 +395,10 @@ with tab2:
 # Onglet 3 : Carte interactive
 # -------------------
 with tab3:
-    st.header(f"<span style='color:{SECONDARY_COLOR}'>Carte des copublications</span>", unsafe_allow_html=True)
+    st.markdown(
+    f"<h2 style='color:{SECONDARY_COLOR}'>Carte des copublications</h2>",
+    unsafe_allow_html=True
+)
     if st.button("Générer la carte"):
         df_map = df_filtered.dropna(subset=["Latitude", "Longitude"])
         if df_map.empty:
