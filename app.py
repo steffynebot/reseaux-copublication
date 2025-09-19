@@ -75,7 +75,7 @@ df_filtered = df.copy()
 if centres:
     df_filtered = df_filtered[df_filtered[centre_col].isin(centres)]
 if pays:
-    df_filtered = df_filtered[df_filtered[pays_col].isin(centres)]
+    df_filtered = df_filtered[df_filtered[pays_col].isin(pays)]
 if villes != "Toutes":
     df_filtered = df_filtered[df_filtered[ville_col] == villes]
 if organismes:
@@ -129,6 +129,9 @@ tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublica
 # -------------------
 # Onglet 1 : Dashboard
 # -------------------
+# -------------------
+# Onglet 1 : Dashboard
+# -------------------
 with tab1:
     st.subheader("Indicateurs clés")
     pubs_year = compute_yearly(df_filtered)
@@ -140,23 +143,22 @@ with tab1:
     pubs_par_centre = df_filtered.groupby(centre_col)[hal_col].nunique()
     pubs_bordeaux = df_filtered[df_filtered[ville_col] == "Bordeaux"][hal_col].nunique()
     pubs_sophia = df_filtered[df_filtered[ville_col] == "Sophia"][hal_col].nunique()
-    delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else None
-    delta_pubs_val = int(delta_pubs) if delta_pubs is not None else None
 
     kpi_data = [
         ("Publications", total_pubs),
         ("Pays", total_pays),
-        ("Villes", total_villes, None),
-        ("Auteurs Inria", total_auteurs_inria, None),
-        ("Auteurs copubliants", total_auteurs_copub, None),
-        ("Publications par centre", pubs_par_centre.sum(), None),
-        ("Bordeaux", pubs_bordeaux, None),
-        ("Sophia", pubs_sophia, None),
+        ("Villes", total_villes),
+        ("Auteurs Inria", total_auteurs_inria),
+        ("Auteurs copubliants", total_auteurs_copub),
+        ("Publications par centre", pubs_par_centre.sum()),
+        ("Bordeaux", pubs_bordeaux),
+        ("Sophia", pubs_sophia),
     ]
 
     cols = st.columns(len(kpi_data))
     for col, (label, value) in zip(cols, kpi_data):
         col.metric(label, int(value))
+
 
     st.markdown("---")
     st.subheader("Publications par année")
