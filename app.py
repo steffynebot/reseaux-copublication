@@ -223,7 +223,7 @@ with tab1:
     top_pays = compute_top(df_filtered, pays_col)
     top_orgs = compute_top(df_filtered, org_col)
 
-    # 🔹 Ligne 1 : Villes & Pays côte à côte
+    #  Ligne 1 : Villes & Pays côte à côte
     col1, col2 = st.columns(2)
 
     fig_villes = go.Figure(go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4,
@@ -238,7 +238,7 @@ with tab1:
     fig_pays.update_layout(title="Pays", title_x=0.5)
     col2.plotly_chart(fig_pays, use_container_width=True)
 
-    # 🔹 Ligne 2 : Organismes centré
+    #  Ligne 2 : Organismes centré
     st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
     fig_orgs = go.Figure(go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4,
                                 marker_colors=px.colors.sequential.Teal[:len(top_orgs)],
@@ -324,28 +324,59 @@ with tab3:
         if df_map.empty:
             st.warning("Aucune donnée valide pour tracer la carte.")
         else:
+            # Comptage du nombre de publications par ville
+            city_counts = df_map.groupby(["Ville", "Latitude", "Longitude"]).size().reset_index(name="count")
+
+            # Centres Inria
             inria_centers = [
-                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255,0,0]},
-                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0,0,255]}
+                {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
+                {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
             ]
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
-            heatmap_df = pd.DataFrame({"lon": df_map["Longitude"], "lat": df_map["Latitude"]})
-            heatmap_layer = pdk.Layer("HeatmapLayer", heatmap_df, get_position=["lon","lat"],
-                                      get_weight=1, radius_pixels=25, opacity=0.6, threshold=0.03)
-            centers_df = pd.DataFrame({"lon":[c["lon"] for c in inria_centers],
-                                       "lat":[c["lat"] for c in inria_centers],
-                                       "name":[c["name"] for c in inria_centers],
-                                       "color":[c["color"] for c in inria_centers]})
-            scatter_layer = pdk.Layer("ScatterplotLayer", centers_df, get_position=["lon","lat"],
-                                      get_fill_color="color", get_radius=15000, pickable=True)
-            view_state = pdk.ViewState(latitude=df_map["Latitude"].mean(),
-                                       longitude=df_map["Longitude"].mean(),
-                                       zoom=5, pitch=45, bearing=0)
-            deck = pdk.Deck(layers=[heatmap_layer, scatter_layer],
-                            initial_view_state=view_state,
-                            map_style=pdk.map_styles.CARTO_DARK,
-                            tooltip={"text":"{name}"})
+
+            # DataFrame pour les centres Inria
+            centers_df = pd.DataFrame({
+                "lon": [c["lon"] for c in inria_centers],
+                "lat": [c["lat"] for c in inria_centers],
+                "name": [c["name"] for c in inria_centers],
+                "count": [city_counts['count'].max()] * len(inria_centers),  # taille max pour les centres
+                "color": [[255, 0, 0]] * len(inria_centers)  # rouge
+            })
+
+            # DataFrame pour les autres villes
+            city_df = city_counts.copy()
+            city_df["color"] = city_df["count"].apply(lambda x: [0, 0, min(255, int(50 + x*5))])  # nuances de bleu
+            city_df.rename(columns={"Longitude":"lon", "Latitude":"lat"}, inplace=True)
+
+            # Scatterplot Layer
+            scatter_layer = pdk.Layer(
+                "ScatterplotLayer",
+                pd.concat([centers_df, city_df], ignore_index=True),
+                get_position=["lon","lat"],
+                get_fill_color="color",
+                get_radius="count",  # taille proportionnelle au nombre de publications
+                pickable=True,
+                auto_highlight=True
+            )
+
+            # ViewState
+            view_state = pdk.ViewState(
+                latitude=df_map["Latitude"].mean(),
+                longitude=df_map["Longitude"].mean(),
+                zoom=5,
+                pitch=45,
+                bearing=0
+            )
+
+            # Deck avec tooltip pour afficher le nom
+            deck = pdk.Deck(
+                layers=[scatter_layer],
+                initial_view_state=view_state,
+                map_style=pdk.map_styles.CARTO_DARK,
+                tooltip={"text":"{name}\nPublications: {count}"}
+            )
+
             st.pydeck_chart(deck)
 
 # -------------------
