@@ -261,7 +261,7 @@ with tab1:
             st.pyplot(fig_wc)
 
 # -------------------
-# Onglet 2 : Réseau copublication avec taille et palette personnalisée
+# Onglet 2 : Réseau copublication avec labels et couleurs uniques
 # -------------------
 with tab2:
     st.header("Réseau de copublication simplifié")
@@ -270,24 +270,43 @@ with tab2:
         subset = df_filtered.head(max_nodes)
         G = nx.Graph()
 
-        # Comptage des publications par ville et pays
+        # Centres à afficher
+        centres = ["Bordeaux", "Sophia"]
+
+        # Comptage publications
         pub_ville = subset.groupby(ville_col).size().to_dict()
         pub_pays = subset.groupby("Pays").size().to_dict()
+        pub_centre = subset.groupby(centre_col).size().to_dict()
 
-        # Ajout des noeuds et liens Centre ↔ Ville / Pays
+        # Palette RGBA personnalisée
+        palette = [
+            [255,128,0,180], [255,255,0,180], [128,255,0,180], [0,255,0,180],
+            [0,255,128,180], [0,255,255,180], [0,128,255,180], [128,0,255,180],
+            [255,0,255,180], [255,0,128,180]
+        ]
+        palette_hex = [f'rgba({r},{g},{b},{a/255})' for r,g,b,a in palette]
+
+        # Tous les nœuds uniques pour leur attribuer une couleur
+        unique_nodes = list(set(subset[ville_col].dropna().tolist() +
+                                subset["Pays"].dropna().tolist() +
+                                centres))
+        node_color_map = {node: palette_hex[i % len(palette_hex)] for i, node in enumerate(unique_nodes)}
+
+        # Ajout des centres explicitement
+        for centre in centres:
+            G.add_node(centre, type="Centre", pub_count=pub_centre.get(centre, 0))
+
+        # Ajout des nœuds Ville et Pays + arêtes
         for _, row in subset.dropna(subset=[centre_col, ville_col, "Pays"]).iterrows():
-            G.add_node(row[centre_col], type="Centre", pub_count=pub_pays.get(row["Pays"], 1))
             G.add_node(row["Pays"], type="Pays", pub_count=pub_pays.get(row["Pays"], 1))
             G.add_node(row[ville_col], type="Ville", pub_count=pub_ville.get(row[ville_col], 1))
-            
-            # Arêtes Centre ↔ Pays et Pays ↔ Ville
             G.add_edge(row[centre_col], row["Pays"], weight=1)
             G.add_edge(row["Pays"], row[ville_col], weight=1)
 
         # Positionnement
         pos = nx.spring_layout(G, k=0.5, iterations=50, seed=42)
-        
-        # Création des arêtes
+
+        # Arêtes
         edge_x, edge_y = [], []
         for edge in G.edges():
             x0, y0 = pos[edge[0]]
@@ -302,51 +321,45 @@ with tab2:
             showlegend=False
         )
 
-        # Palette RGBA personnalisée
-        palette = [
-            [255,128,0,180], [255,255,0,180], [128,255,0,180], [0,255,0,180],
-            [0,255,128,180], [0,255,255,180], [0,128,255,180], [128,0,255,180],
-            [255,0,255,180], [255,0,128,180]
-        ]
-        palette_hex = [f'rgba({r},{g},{b},{a/255})' for r,g,b,a in palette]
-
-        type_color_map = {"Centre": palette_hex[0], "Pays": palette_hex[1], "Ville": palette_hex[2]}
-
         # Création des nœuds
-        node_traces = []
-        for node_type, color in type_color_map.items():
-            node_x, node_y, node_text, node_size = [], [], [], []
-            for node in G.nodes():
-                if G.nodes[node]["type"] == node_type:
-                    x, y = pos[node]
-                    node_x.append(x)
-                    node_y.append(y)
-                    pub_count = G.nodes[node].get("pub_count", 1)
-                    node_text.append(f"{node} ({node_type}) - {pub_count} publications")
-                    node_size.append(10 + pub_count*2)  # taille proportionnelle aux publications
-            if node_x:
-                node_traces.append(go.Scatter(
-                    x=node_x, y=node_y,
-                    mode="markers",
-                    name=node_type,
-                    hovertext=node_text,
-                    hoverinfo="text",
-                    marker=dict(color=color, size=node_size, line_width=2)
-                ))
+        node_x, node_y, node_text, node_size, node_color, node_labels = [], [], [], [], [], []
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            pub_count = G.nodes[node].get("pub_count", 1)
+            node_text.append(f"{node} ({G.nodes[node]['type']}) - {pub_count} publications")
+            node_size.append(10 + pub_count*2)
+            node_color.append(node_color_map[node])
+            # Labels pour Centres et Pays
+            if G.nodes[node]['type'] in ["Centre", "Pays"]:
+                node_labels.append(node)
+            else:
+                node_labels.append("")  # pas de label pour les villes
+
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode="markers+text",
+            text=node_labels,
+            textposition="top center",
+            hovertext=node_text,
+            hoverinfo="text",
+            marker=dict(color=node_color, size=node_size, line_width=2)
+        )
 
         # Figure finale
         fig_net = go.Figure(
-            data=[edge_trace] + node_traces,
+            data=[edge_trace, node_trace],
             layout=go.Layout(
                 title="Réseau Centres ↔ Pays ↔ Villes",
-                showlegend=True,
-                legend=dict(title="Type de nœud"),
+                showlegend=False,
                 hovermode="closest",
                 plot_bgcolor="#ffffff",
                 paper_bgcolor="#ffffff"
             )
         )
         st.plotly_chart(fig_net, use_container_width=True)
+
 
 
 # ----------------------
