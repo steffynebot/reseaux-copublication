@@ -133,11 +133,9 @@ st.title("Copublications d'auteurs Inria (Sophia & Bordeaux)")
 # -------------------
 # Tabs
 # -------------------
-tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau copublication", "Carte du monde", "Contact"])
+tab1, tab2, tab3, tab4 = st.tabs(["Visualisation générale", "Réseau de copublication", "Carte du monde", "Contact"])
 
-# -------------------
-# Onglet 1 : Dashboard
-# -------------------
+
 # -------------------
 # Onglet 1 : Dashboard
 # -------------------
@@ -150,8 +148,8 @@ with tab1:
     total_auteurs_inria = df_filtered[auteurs_fr_col].nunique()
     total_auteurs_copub = df_filtered[auteurs_copub_col].nunique()
     pubs_par_centre = df_filtered.groupby(centre_col)[hal_col].nunique()
-    pubs_bordeaux = df_filtered[df_filtered[ville_col] == "Bordeaux"][hal_col].nunique()
-    pubs_sophia = df_filtered[df_filtered[ville_col] == "Sophia"][hal_col].nunique()
+    pubs_bordeaux = df_filtered[df_filtered[centre_col] == "Bordeaux"][hal_col].nunique()
+    pubs_sophia = df_filtered[df_filtered[centre_col] == "Sophia"][hal_col].nunique()
 
     kpi_data = [
         ("Publications", total_pubs),
