@@ -323,15 +323,6 @@ with tab2:
 # onglet 3
 # ----------------------
 with tab3:
-
-import pydeck as pdk
-import pandas as pd
-import math
-import numpy as np
-import random
-import streamlit as st
-import time
-
 # ----------------------
 # Préparer les données
 # ----------------------
