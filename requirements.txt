@@ -9,4 +9,3 @@ openpyxl
 scipy
 pydeck
 time
-math
