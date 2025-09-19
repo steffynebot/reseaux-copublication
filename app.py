@@ -7,6 +7,7 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import pydeck as pdk
 import plotly.graph_objects as go
+import math
 
 # -------------------
 # Page config
@@ -320,28 +321,40 @@ with tab2:
 # onglet 3
 # ----------------------
 
+
 # ----------------------
 # Préparer les données
 # ----------------------
 df_map = df_filtered.dropna(subset=["Latitude", "Longitude", "Ville", "HalID"])
 
-# Grouper par ville pour calculer le nombre de publications (via HalID)
+# Grouper par ville pour compter le nombre de publications
 cities_df = df_map.groupby("Ville").agg({
     "Latitude": "mean",
     "Longitude": "mean",
-    "HalID": "count"  # nombre de publications par ville
+    "HalID": "count"
 }).reset_index()
 
-# Renommer les colonnes pour PyDeck
-cities_df.rename(columns={
-    "Latitude": "lat",
-    "Longitude": "lon",
-    "Ville": "name",
-    "HalID": "count"
-}, inplace=True)
+cities_df.rename(columns={"Latitude": "lat", "Longitude": "lon", "Ville": "name", "HalID": "count"}, inplace=True)
 
 # Calcul de la taille des cercles proportionnelle au nombre de publications
 cities_df["radius"] = cities_df["count"].apply(lambda x: math.sqrt(x) * 5000)  # ajustable
+
+# Couleur multicolore selon le nombre de publications
+# On crée un gradient du bleu clair au rouge foncé
+min_count = cities_df["count"].min()
+max_count = cities_df["count"].max()
+colors = []
+
+for c in cities_df["count"]:
+    # Normalisation 0-1
+    norm = (c - min_count) / (max_count - min_count + 1e-6)
+    # Couleur RGB : du bleu au rouge
+    r = int(255 * norm)
+    g = 50
+    b = int(255 * (1 - norm))
+    colors.append([r, g, b, 180])  # 180 = alpha semi-transparent
+
+cities_df["color"] = colors
 
 # ----------------------
 # ScatterplotLayer
@@ -358,20 +371,31 @@ scatter_layer = pdk.Layer(
     line_width_min_pixels=1,
     get_position=["lon","lat"],
     get_radius="radius",
-    get_fill_color=[0, 100, 255, 180],  # bleu semi-transparent
-    get_line_color=[0, 0, 0],
+    get_fill_color="color",
+    get_line_color=[0,0,0],
 )
 
 # ----------------------
-# TextLayer pour afficher les noms des villes
+# TextLayer pour les centres Inria seulement
 # ----------------------
+inria_centers = [
+    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667, "color": [255,0,0]},
+    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500, "color": [0,0,255]}
+]
+centers_df = pd.DataFrame({
+    "lon": [c["lon"] for c in inria_centers],
+    "lat": [c["lat"] for c in inria_centers],
+    "name": [c["name"] for c in inria_centers],
+    "color": [c["color"] for c in inria_centers]
+})
+
 text_layer = pdk.Layer(
     "TextLayer",
-    cities_df,
+    centers_df,
     get_position=["lon","lat"],
     get_text="name",
-    get_size="count",  # taille proportionnelle au nombre de publications
     get_color=[255,255,255],
+    get_size=16,
     get_alignment_baseline="'bottom'",
     pickable=False
 )
@@ -388,7 +412,7 @@ view_state = pdk.ViewState(
 )
 
 # ----------------------
-# Deck avec tooltip affichant le nombre de publications
+# Deck avec tooltip
 # ----------------------
 deck = pdk.Deck(
     layers=[scatter_layer, text_layer],
@@ -401,6 +425,7 @@ deck = pdk.Deck(
 # Affichage dans Streamlit
 # ----------------------
 st.pydeck_chart(deck)
+
 
 
 # -------------------
