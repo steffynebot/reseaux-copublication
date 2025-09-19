@@ -393,7 +393,7 @@ with tab3:
     )
 
     # ----------------------
-    # Centres Inria avec icône + texte
+    # Centres Inria (texte seulement)
     # ----------------------
     inria_centers = [
         {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
@@ -401,31 +401,17 @@ with tab3:
     ]
     centers_df = pd.DataFrame(inria_centers)
 
-    # Taille pulsante
-    step = time.time() % 1000
-    pulse_size = 30 + 5 * math.sin(step)
-
-    # IconLayer pour l'icône
-    icon_layer = pdk.Layer(
-        "IconLayer",
-        data=centers_df,
-        get_icon='{"url": "icon.jpeg", "width": 128, "height": 128, "anchorY": 128}',
-        get_size=pulse_size,
-        get_position=["lon", "lat"],
-        pickable=True
-    )
-
-    # TextLayer pour le nom
     text_layer = pdk.Layer(
         "TextLayer",
         data=centers_df,
-        get_position=["lon", "lat"],
+        get_position=["lon","lat"],
         get_text="name",
-        get_size=pulse_size / 2,
-        get_color=[0, 255, 0],
+        get_size=20,
+        get_color=[0,255,0],
         get_alignment_baseline="bottom",
-        get_pixel_offset=[20, 0],
-        billboard=True
+        get_pixel_offset=[0, 0],  # Décalage si besoin
+        billboard=True,
+        pickable=True
     )
 
     # ----------------------
@@ -443,14 +429,13 @@ with tab3:
     # Deck
     # ----------------------
     deck = pdk.Deck(
-        layers=[scatter_layer, icon_layer, text_layer],
+        layers=[scatter_layer, text_layer],
         initial_view_state=view_state,
         map_style=pdk.map_styles.CARTO_DARK,
         tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
     )
 
     st.pydeck_chart(deck)
-
 
 # -------------------
 # Onglet 4 : Contact
