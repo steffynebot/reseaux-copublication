@@ -137,12 +137,20 @@ with tab1:
     pubs_sophia = df_filtered[df_filtered[ville_col] == "Sophia"][hal_col].nunique()
     delta_pubs = pubs_year[hal_col].iloc[-1] - pubs_year[hal_col].iloc[-2] if len(pubs_year) > 1 else 0
 
-    kpi_cols[1].metric("Villes", int(total_villes))
-    kpi_cols[2].metric("Auteurs Inria", int(total_auteurs_inria))
-    kpi_cols[3].metric("Auteurs copubliants", int(total_auteurs_copub))
-    kpi_cols[4].metric("Publications par centre", int(pubs_par_centre.sum()))
-    kpi_cols[5].metric("Bordeaux", int(pubs_bordeaux))
-    kpi_cols[6].metric("Sophia", int(pubs_sophia))
+    kpi_data = [
+    ("Publications", total_pubs, delta_pubs_val),
+    ("Villes", total_villes, None),
+    ("Auteurs Inria", total_auteurs_inria, None),
+    ("Auteurs copubliants", total_auteurs_copub, None),
+    ("Publications par centre", pubs_par_centre.sum(), None),
+    ("Bordeaux", pubs_bordeaux, None),
+    ("Sophia", pubs_sophia, None),
+]
+
+cols = st.columns(len(kpi_data))
+for col, (label, value, delta) in zip(cols, kpi_data):
+    col.metric(label, int(value), delta=int(delta) if delta is not None else None)
+
 
 
     st.markdown("---")
