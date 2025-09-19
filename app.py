@@ -465,7 +465,10 @@ with tab3:
 # Onglet 4 : Contact
 # -------------------
 with tab4:
-    st.header(f"<span style='color:{PRIMARY_COLOR}'>À propos de nous</span>", unsafe_allow_html=True)
+    st.markdown(
+    f"<h2 style='color:{PRIMARY_COLOR}'>À propos de nous</h2>",
+    unsafe_allow_html=True
+)
     st.markdown(f"""
         <div style='color:{TEXT_COLOR};'>
         Le groupe <b>Datalake</b>, créé en 2022, travaille à rendre possible le croisement de données entre <b>HAL</b> et divers référentiels et sources externes ou internes,
