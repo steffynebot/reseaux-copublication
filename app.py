@@ -179,49 +179,49 @@ import streamlit as st
 
 st.subheader("📊 Publications par années")
 
-# ✅ Palette de bleus moderne (de clair à foncé)
-blue_scale = px.colors.sequential.Blues  # dégradé intégré Plotly
+# Palette de bleus moderne (de clair à foncé)
+    blue_scale = px.colors.sequential.Blues  # dégradé intégré Plotly
 
-fig_year = px.bar(
-    pubs_year,
-    x=annee_col,
-    y=hal_col,
-    color=hal_col,  # Couleur en fonction du nombre de publications
-    text_auto=True,
-    color_continuous_scale=blue_scale,   # Dégradé de bleus
-)
+    fig_year = px.bar(
+        pubs_year,
+        x=annee_col,
+        y=hal_col,
+        color=hal_col,  # Couleur en fonction du nombre de publications
+        text_auto=True,
+        color_continuous_scale=blue_scale,   # Dégradé de bleus
+    )
 
-# ✅ Barres arrondies + style hover
-fig_year.update_traces(
-    marker_line_width=0,
-    hovertemplate='<b>Année</b>: %{x}<br><b>Publications</b>: %{y}',
-    width=0.6,
-)
+#  Barres arrondies + style hover
+    fig_year.update_traces(
+        marker_line_width=0,
+        hovertemplate='<b>Année</b>: %{x}<br><b>Publications</b>: %{y}',
+        width=0.6,
+    )
 
-# ✅ Layout moderne
-fig_year.update_layout(
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
-    coloraxis_showscale=False,  # Cache la légende du gradient
-    xaxis=dict(
-        title="Année",
-        showgrid=False,
-        zeroline=False,
-        tickangle=-30,
-    ),
-    yaxis=dict(
-        title="Nombre de publications",
-        showgrid=True,
-        gridcolor="rgba(200,200,200,0.2)",
-    ),
-    font=dict(size=14),
-    bargap=0.25,
-)
+#  Layout moderne
+    fig_year.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        coloraxis_showscale=False,  # Cache la légende du gradient
+        xaxis=dict(
+            title="Année",
+            showgrid=False,
+            zeroline=False,
+            tickangle=-30,
+        ),
+        yaxis=dict(
+            title="Nombre de publications",
+            showgrid=True,
+            gridcolor="rgba(200,200,200,0.2)",
+        ),
+        font=dict(size=14),
+        bargap=0.25,
+    )
 
-# ✅ Ajout d’un effet arrondi visuel avec des coins doux (via shape + opacity)
-fig_year.update_traces(marker=dict(cornerradius=8))  # nécessite plotly >=5.20
+#  Ajout d’un effet arrondi visuel avec des coins doux (via shape + opacity)
+    fig_year.update_traces(marker=dict(cornerradius=8))  # nécessite plotly >=5.20
 
-st.plotly_chart(fig_year, use_container_width=True)
+    st.plotly_chart(fig_year, use_container_width=True)
 
 
 
