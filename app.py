@@ -309,7 +309,7 @@ with tab1:
 # Onglet 2 : Réseau
 # -------------------
 with tab2:
-    st.header(f"<span style='color:{PRIMARY_COLOR}'>Réseau de copublication</span>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:{PRIMARY_COLOR}'>Réseau de copublication</h2>", unsafe_allow_html=True)
     if st.button("Générer le réseau"):
         max_nodes = 200
         subset = df_filtered.head(max_nodes)
