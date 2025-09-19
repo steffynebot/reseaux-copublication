@@ -321,11 +321,6 @@ with tab2:
 # ----------------------
 # onglet 3
 # ----------------------
-import pydeck as pdk
-import pandas as pd
-import math
-import numpy as np
-import streamlit as st
 
 # ----------------------
 # Préparer les données
@@ -345,24 +340,36 @@ cities_df.rename(columns={
     "HalID": "count"
 }, inplace=True)
 
-top20_cities = cities_df.nlargest(20, "count")["name"].tolist()
+# ----------------------
+# Top 100 villes en bleu
+# ----------------------
+top100_cities = cities_df.nlargest(100, "count")["name"].tolist()
 
+# ----------------------
 # Taille des cercles
+# ----------------------
 def compute_radius(row):
     base_radius = math.sqrt(row["count"]) * 3000
-    return base_radius * 1.5 if row["name"] in top20_cities else base_radius
+    if row["name"] in top100_cities:
+        return base_radius * 1.5  # top100 légèrement plus grands
+    return base_radius
 
 cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
 
 # ----------------------
-# Gradient fluide multicolore
+# Couleurs
 # ----------------------
 palette = [
-    [255, 0, 0, 180],      # rouge
-    [0, 0, 255, 180],      # bleu
-    [128, 0, 128, 180],    # violet
-    [255, 255, 255, 180],  # blanc
-    [0, 255, 0, 180]       # vert
+    [255,128,0,180],  # orange
+    [255,255,0,180],  # yellow
+    [128,255,0,180],  # chartreuse
+    [0,255,0,180],    # green
+    [0,255,128,180],  # spring green
+    [0,255,255,180],  # cyan
+    [0,128,255,180],  # dodger blue
+    [128,0,255,180],  # purple
+    [255,0,255,180],  # violet
+    [255,0,128,180]   # magenta
 ]
 
 def interpolate_color(norm):
@@ -375,16 +382,88 @@ def interpolate_color(norm):
 
 min_count = cities_df["count"].min()
 max_count = cities_df["count"].max()
-
 colors = []
+
 for _, row in cities_df.iterrows():
-    if row["name"] in top20_cities:
-        colors.append([255,0,0,200])
+    if row["name"] in top100_cities:
+        colors.append([0,0,255,200])  # top100 en bleu
     else:
         norm = (row["count"] - min_count) / (max_count - min_count + 1e-6)
         colors.append(interpolate_color(norm))
 
 cities_df["color"] = colors
+
+# ----------------------
+# ScatterplotLayer
+# ----------------------
+scatter_layer = pdk.Layer(
+    "ScatterplotLayer",
+    cities_df,
+    pickable=True,
+    stroked=True,
+    filled=True,
+    radius_scale=1,
+    radius_min_pixels=5,
+    radius_max_pixels=100,
+    line_width_min_pixels=1,
+    get_position=["lon","lat"],
+    get_radius="radius",
+    get_fill_color="color",
+    get_line_color=[0,0,0],
+)
+
+# ----------------------
+# IconLayer pour les centres Inria
+# ----------------------
+inria_centers = [
+    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
+    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
+]
+centers_df = pd.DataFrame(inria_centers)
+
+# Assurez-vous d'avoir un PNG représentant l'entreprise (logo ou emoji)
+icon_data = {
+    "url": "logo.png",  # chemin vers le PNG du logo
+    "width": 32,
+    "height": 32,
+    "anchorY": 32
+}
+centers_df["icon_data"] = [icon_data] * len(centers_df)
+
+icon_layer = pdk.Layer(
+    type="IconLayer",
+    data=centers_df,
+    get_icon="icon_data",
+    get_size=4,
+    size_scale=15,
+    get_position=["lon","lat"],
+    pickable=True,
+    tooltip={"text": "{name}"}
+)
+
+# ----------------------
+# ViewState
+# ----------------------
+view_state = pdk.ViewState(
+    latitude=df_map["Latitude"].mean(),
+    longitude=df_map["Longitude"].mean(),
+    zoom=5,
+    pitch=45,
+    bearing=0
+)
+
+# ----------------------
+# Deck
+# ----------------------
+deck = pdk.Deck(
+    layers=[scatter_layer, icon_layer],
+    initial_view_state=view_state,
+    map_style=pdk.map_styles.CARTO_DARK,
+    tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
+)
+
+st.pydeck_chart(deck)
+
 
 # ----------------------
 # ScatterplotLayer
