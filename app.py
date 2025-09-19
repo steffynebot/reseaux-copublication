@@ -332,7 +332,7 @@ with tab3:
             if centres:
                 inria_centers = [c for c in inria_centers if c["name"].lower() in [cc.lower() for cc in centres]]
 
-            # Heatmap des publications
+            # DataFrame pour Heatmap
             heatmap_df = pd.DataFrame({
                 "lon": df_map["Longitude"],
                 "lat": df_map["Latitude"]
@@ -347,7 +347,7 @@ with tab3:
                 threshold=0.03
             )
 
-            # Scatter pour les centres Inria
+            # DataFrame pour Scatter des centres
             centers_df = pd.DataFrame({
                 "lon": [c["lon"] for c in inria_centers],
                 "lat": [c["lat"] for c in inria_centers],
@@ -360,44 +360,38 @@ with tab3:
                 get_position=["lon","lat"],
                 get_fill_color="color",
                 get_radius=15000,
-                pickable=True,
-                auto_highlight=True
+                pickable=True
             )
 
-            # Grouper les villes pour TextLayer
+            # TextLayer pour les centres
+            text_centers_layer = pdk.Layer(
+                "TextLayer",
+                centers_df,
+                get_position=["lon","lat"],
+                get_text="name",
+                get_color=[255, 255, 255],
+                get_size=16,
+                get_alignment_baseline="'bottom'",
+                pickable=False
+            )
+
+            # Grouper df_map par ville pour afficher leur nom
             cities_df = df_map.groupby("Ville").agg({
                 "Latitude": "mean",
                 "Longitude": "mean"
             }).reset_index()
             cities_df.rename(columns={"Latitude":"lat", "Longitude":"lon", "Ville":"name"}, inplace=True)
 
-            # TextLayer pour les villes : n'apparaît que si zoom > seuil
-            text_layer = pdk.Layer(
+            # TextLayer pour toutes les villes
+            text_cities_layer = pdk.Layer(
                 "TextLayer",
                 cities_df,
                 get_position=["lon","lat"],
                 get_text="name",
-                get_color=[200,200,200],
+                get_color=[200, 200, 200],  # gris clair
                 get_size=12,
                 get_alignment_baseline="'bottom'",
-                pickable=False,
-                # Le scaling fait apparaître le texte plus gros au zoom
-                size_units='meters',
-                size_scale=1
-            )
-
-            # TextLayer pour centres (toujours visibles)
-            text_centers_layer = pdk.Layer(
-                "TextLayer",
-                centers_df,
-                get_position=["lon","lat"],
-                get_text="name",
-                get_color=[255,255,255],
-                get_size=16,
-                get_alignment_baseline="'bottom'",
-                pickable=False,
-                size_units='meters',
-                size_scale=1
+                pickable=False
             )
 
             # ViewState
@@ -409,9 +403,9 @@ with tab3:
                 bearing=0
             )
 
-            # Deck avec tooltip pour tous les scatter points
+            # Deck avec Heatmap + Scatter + Text (centres + villes)
             deck = pdk.Deck(
-                layers=[heatmap_layer, scatter_layer, text_centers_layer, text_layer],
+                layers=[heatmap_layer, scatter_layer, text_centers_layer, text_cities_layer],
                 initial_view_state=view_state,
                 map_style=pdk.map_styles.CARTO_DARK,
                 tooltip={"text":"{name}"}
