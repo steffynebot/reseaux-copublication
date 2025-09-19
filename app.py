@@ -74,6 +74,8 @@ with st.sidebar:
 df_filtered = df.copy()
 if centres:
     df_filtered = df_filtered[df_filtered[centre_col].isin(centres)]
+if pays:
+    df_filtered = df_filtered[df_filtered[pays_col].isin(centres)]
 if villes != "Toutes":
     df_filtered = df_filtered[df_filtered[ville_col] == villes]
 if organismes:
@@ -102,6 +104,7 @@ def build_graph(df, max_nodes=200):
         G.add_node(row[auteurs_fr_col], type="Inria")
         G.add_node(row[auteurs_copub_col], type="Copubliant")
         G.add_node(row[ville_col], type="Ville")
+        G.add_node(row[pays_col], type="Pays")
         G.add_edge(row[auteurs_fr_col], row[auteurs_copub_col])
         G.add_edge(row[auteurs_copub_col], row[ville_col])
     pos = nx.spring_layout(G, k=0.3, iterations=10, seed=42)
@@ -131,6 +134,7 @@ with tab1:
     pubs_year = compute_yearly(df_filtered)
     total_pubs = pubs_year[hal_col].sum()
     total_villes = df_filtered[ville_col].nunique()
+    total_pays = df_filtered[pays_col].nunique()
     total_auteurs_inria = df_filtered[auteurs_fr_col].nunique()
     total_auteurs_copub = df_filtered[auteurs_copub_col].nunique()
     pubs_par_centre = df_filtered.groupby(centre_col)[hal_col].nunique()
@@ -140,7 +144,8 @@ with tab1:
     delta_pubs_val = int(delta_pubs) if delta_pubs is not None else None
 
     kpi_data = [
-        ("Publications", total_pubs, delta_pubs_val),
+        ("Publications", total_pubs),
+        ("Pays", total_pays),
         ("Villes", total_villes, None),
         ("Auteurs Inria", total_auteurs_inria, None),
         ("Auteurs copubliants", total_auteurs_copub, None),
@@ -163,13 +168,14 @@ with tab1:
         color_continuous_scale=px.colors.sequential.Teal,
         text=hal_col,
     )
-    fig_year.update_traces(marker_line_color='black', marker_line_width=1.5, hovertemplate='%{x}: %{y}')
+    fig_year.update_traces(marker_line_width=1.5, hovertemplate='%{x}: %{y}')
     fig_year.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                            title_x=0.5, xaxis_title='Année', yaxis_title='Nombre de publications')
     st.plotly_chart(fig_year, use_container_width=True)
 
     st.subheader("TOP 10")
     top_villes = compute_top(df_filtered, ville_col)
+    top_pays = compute_top(df_filtered, pays_col)
     top_orgs = compute_top(df_filtered, org_col)
     col1, col2 = st.columns(2)
 
@@ -187,6 +193,14 @@ with tab1:
     fig_orgs.update_layout(title="Organismes copubliants", title_x=0.5)
     col2.plotly_chart(fig_orgs, use_container_width=True)
 
+
+    # Pie chart TOP pays
+    fig_pays = go.Figure(go.Pie(labels=top_pays.index, values=top_pays.values, hole=0.4,
+                                marker_colors=px.colors.sequential.Teal[:len(top_orgs)],
+                                textinfo='label+percent'))
+    fig_pays.update_layout(title="Pays", title_x=0.5)
+    col2.plotly_chart(fig_pays, use_container_width=True)
+    
     # WordCloud
     if "Mots-cles" in df_filtered.columns and st.button("Générer le WordCloud"):
         text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
