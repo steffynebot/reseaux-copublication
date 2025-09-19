@@ -167,40 +167,55 @@ with tab1:
 
     st.markdown("---")
 
-    st.subheader("Publications par années")
+
+    import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
+
+st.subheader("Publications par années")
+
+# Palette de bleus moderne (de clair à foncé)
+blue_scale = px.colors.sequential.Blues  # dégradé intégré Plotly
 
     fig_year = px.bar(
         pubs_year,
         x=annee_col,
         y=hal_col,
-        text_auto=True,  # affiche directement les valeurs
-        color_discrete_sequence=[px.colors.sequential.Teal[-3]],  #  bleu/vert moderne
+        color=hal_col,  # Couleur en fonction du nombre de publications
+        text_auto=True,
+        color_continuous_scale=blue_scale,   # Dégradé de bleus
     )
-
-#  Barres arrondies + style épuré
+    
+    #  Barres arrondies + style hover
     fig_year.update_traces(
         marker_line_width=0,
-        marker_line_color="rgba(0,0,0,0)",
-        hovertemplate='%{x}: %{y}',
-        width=0.6,            # largeur des barres
-        marker=dict(
-            color=px.colors.sequential.Teal[-3],
-            line=dict(width=0),
-            # coins arrondis (shape 'spline' pour lisser un peu)
-        )
+        hovertemplate='<b>Année</b>: %{x}<br><b>Publications</b>: %{y}',
+        width=0.6,
     )
-
+    
+    #  Layout moderne
     fig_year.update_layout(
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        title="",
-        xaxis_title="Année",
-        yaxis_title="Nombre de publications",
-        title_x=0.5,
-        bargap=0.2,           # espace entre barres
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        coloraxis_showscale=False,  # Cache la légende du gradient
+        xaxis=dict(
+            title="Année",
+            showgrid=False,
+            zeroline=False,
+            tickangle=-30,
+        ),
+        yaxis=dict(
+            title="Nombre de publications",
+            showgrid=True,
+            gridcolor="rgba(200,200,200,0.2)",
+        ),
         font=dict(size=14),
+        bargap=0.25,
     )
-
+    
+    # Ajout d’un effet arrondi visuel avec des coins doux (via shape + opacity)
+    fig_year.update_traces(marker=dict(cornerradius=8))  # nécessite plotly >=5.20
+    
     st.plotly_chart(fig_year, use_container_width=True)
 
 
