@@ -156,8 +156,7 @@ with tab1:
         ("Pays", total_pays),
         ("Villes", total_villes),
         ("Auteurs Inria", total_auteurs_inria),
-        ("Auteurs copubliants", total_auteurs_copub),
-        ("Publications par centre", pubs_par_centre.sum()),
+        ("Auteurs copubliants", total_auteurs_copub),     
         ("Bordeaux", pubs_bordeaux),
         ("Sophia", pubs_sophia),
     ]
@@ -166,9 +165,8 @@ with tab1:
     for col, (label, value) in zip(cols, kpi_data):
         col.metric(label, int(value))
 
-
     st.markdown("---")
-    st.subheader("Publications par année")
+    st.subheader("Publications par années")
     fig_year = px.bar(
         pubs_year,
         x=annee_col,
@@ -182,35 +180,37 @@ with tab1:
                            title_x=0.5, xaxis_title='Année', yaxis_title='Nombre de publications')
     st.plotly_chart(fig_year, use_container_width=True)
 
+    # ---------- TOP 10 ----------
     st.subheader("TOP 10")
     top_villes = compute_top(df_filtered, ville_col)
     top_pays = compute_top(df_filtered, pays_col)
     top_orgs = compute_top(df_filtered, org_col)
+
+    # 🔹 Ligne 1 : Villes & Pays côte à côte
     col1, col2 = st.columns(2)
 
-    # Pie chart TOP villes
     fig_villes = go.Figure(go.Pie(labels=top_villes.index, values=top_villes.values, hole=0.4,
                                   marker_colors=px.colors.sequential.Teal[:len(top_villes)],
                                   textinfo='label+percent'))
     fig_villes.update_layout(title="Villes copubliantes", title_x=0.5)
     col1.plotly_chart(fig_villes, use_container_width=True)
 
-    # Pie chart TOP organismes
+    fig_pays = go.Figure(go.Pie(labels=top_pays.index, values=top_pays.values, hole=0.4,
+                                marker_colors=px.colors.sequential.Teal[:len(top_pays)],
+                                textinfo='label+percent'))
+    fig_pays.update_layout(title="Pays", title_x=0.5)
+    col2.plotly_chart(fig_pays, use_container_width=True)
+
+    # 🔹 Ligne 2 : Organismes centré
+    st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
     fig_orgs = go.Figure(go.Pie(labels=top_orgs.index, values=top_orgs.values, hole=0.4,
                                 marker_colors=px.colors.sequential.Teal[:len(top_orgs)],
                                 textinfo='label+percent'))
     fig_orgs.update_layout(title="Organismes copubliants", title_x=0.5)
-    col2.plotly_chart(fig_orgs, use_container_width=True)
+    st.plotly_chart(fig_orgs, use_container_width=False)  # pas full width pour le centrer
+    st.markdown("</div>", unsafe_allow_html=True)
 
-
-    # Pie chart TOP pays
-    fig_pays = go.Figure(go.Pie(labels=top_pays.index, values=top_pays.values, hole=0.4,
-                                marker_colors=px.colors.sequential.Teal[:len(top_orgs)],
-                                textinfo='label+percent'))
-    fig_pays.update_layout(title="Pays", title_x=0.5)
-    col2.plotly_chart(fig_pays, use_container_width=True)
-    
-    # WordCloud
+    # ---------- WordCloud ----------
     if "Mots-cles" in df_filtered.columns and st.button("Générer le WordCloud"):
         text = " ".join(df_filtered["Mots-cles"].dropna().astype(str))
         if text:
