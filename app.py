@@ -9,6 +9,7 @@ import pydeck as pdk
 import math
 import time
 import numpy as np
+import random
 
 # -------------------
 # Page config
@@ -321,6 +322,12 @@ with tab2:
 # ----------------------
 # onglet 3
 # ----------------------
+import pydeck as pdk
+import pandas as pd
+import math
+import numpy as np
+import random
+import streamlit as st
 
 # ----------------------
 # Préparer les données
@@ -357,7 +364,7 @@ def compute_radius(row):
 cities_df["radius"] = cities_df.apply(compute_radius, axis=1)
 
 # ----------------------
-# Couleurs
+# Palette pour les autres villes
 # ----------------------
 palette = [
     [255,128,0,180],  # orange
@@ -372,29 +379,20 @@ palette = [
     [255,0,128,180]   # magenta
 ]
 
-def interpolate_color(norm):
-    n = len(palette) - 1
-    idx = min(int(norm * n), n-1)
-    frac = (norm * n) - idx
-    c1 = np.array(palette[idx])
-    c2 = np.array(palette[idx+1])
-    return (c1 + (c2 - c1) * frac).astype(int).tolist()
-
-min_count = cities_df["count"].min()
-max_count = cities_df["count"].max()
+# ----------------------
+# Couleurs
+# ----------------------
 colors = []
-
 for _, row in cities_df.iterrows():
     if row["name"] in top100_cities:
         colors.append([0,0,255,200])  # top100 en bleu
     else:
-        norm = (row["count"] - min_count) / (max_count - min_count + 1e-6)
-        colors.append(interpolate_color(norm))
+        colors.append(random.choice(palette))  # aléatoire parmi la palette
 
 cities_df["color"] = colors
 
 # ----------------------
-# ScatterplotLayer
+# ScatterplotLayer pour toutes les villes
 # ----------------------
 scatter_layer = pdk.Layer(
     "ScatterplotLayer",
@@ -413,17 +411,17 @@ scatter_layer = pdk.Layer(
 )
 
 # ----------------------
-# IconLayer pour les centres Inria
+# IconLayer et TextLayer pour les centres Inria
 # ----------------------
 inria_centers = [
-    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
-    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
+    {"name": "Centre Inria Bordeaux", "lat": 44.833328, "lon": -0.56667},
+    {"name": "Centre Inria Sophia", "lat": 43.6200, "lon": 7.0500}
 ]
 centers_df = pd.DataFrame(inria_centers)
 
-# Assurez-vous d'avoir un PNG représentant l'entreprise (logo ou emoji)
+# Icône (logo ou emoji) pour les centres
 icon_data = {
-    "url": "logo.png",  # chemin vers le PNG du logo
+    "url": "logo.png",  # chemin vers le PNG emoji/logo INRA
     "width": 32,
     "height": 32,
     "anchorY": 32
@@ -441,76 +439,17 @@ icon_layer = pdk.Layer(
     tooltip={"text": "{name}"}
 )
 
-# ----------------------
-# ViewState
-# ----------------------
-view_state = pdk.ViewState(
-    latitude=df_map["Latitude"].mean(),
-    longitude=df_map["Longitude"].mean(),
-    zoom=5,
-    pitch=45,
-    bearing=0
-)
-
-# ----------------------
-# Deck
-# ----------------------
-deck = pdk.Deck(
-    layers=[scatter_layer, icon_layer],
-    initial_view_state=view_state,
-    map_style=pdk.map_styles.CARTO_DARK,
-    tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
-)
-
-st.pydeck_chart(deck)
-
-
-# ----------------------
-# ScatterplotLayer
-# ----------------------
-scatter_layer = pdk.Layer(
-    "ScatterplotLayer",
-    cities_df,
-    pickable=True,
-    stroked=True,
-    filled=True,
-    radius_scale=1,
-    radius_min_pixels=5,
-    radius_max_pixels=100,
-    line_width_min_pixels=1,
-    get_position=["lon","lat"],
-    get_radius="radius",
-    get_fill_color="color",
-    get_line_color=[0,0,0],
-)
-
-# ----------------------
-# IconLayer pour centres Inria
-# ----------------------
-inria_centers = [
-    {"name": "Bordeaux", "lat": 44.833328, "lon": -0.56667},
-    {"name": "Sophia", "lat": 43.6200, "lon": 7.0500}
-]
-centers_df = pd.DataFrame(inria_centers)
-
-# Assurez-vous d'avoir un petit PNG 32x32 avec l'emoji/logo INRA
-icon_data = {
-    "url": "emoji.png",  # chemin vers le PNG emoji/centre
-    "width": 32,
-    "height": 32,
-    "anchorY": 32
-}
-centers_df["icon_data"] = [icon_data] * len(centers_df)
-
-icon_layer = pdk.Layer(
-    type="IconLayer",
+# TextLayer pour afficher le nom des centres en gras et vert
+text_layer = pdk.Layer(
+    "TextLayer",
     data=centers_df,
-    get_icon="icon_data",
-    get_size=4,
-    size_scale=15,
     get_position=["lon","lat"],
-    pickable=True,
-    tooltip={"text": "{name}"}
+    get_text="name",
+    get_size=24,
+    get_color=[0,255,0],
+    get_alignment_baseline="'bottom'",
+    pickable=False,
+    billboard=True
 )
 
 # ----------------------
@@ -528,15 +467,13 @@ view_state = pdk.ViewState(
 # Deck
 # ----------------------
 deck = pdk.Deck(
-    layers=[scatter_layer, icon_layer],
+    layers=[scatter_layer, icon_layer, text_layer],
     initial_view_state=view_state,
     map_style=pdk.map_styles.CARTO_DARK,
     tooltip={"html": "<b>{name}</b><br>Publications: {count}"}
 )
 
 st.pydeck_chart(deck)
-
-
 
 # -------------------
 # Onglet 4 : Contact
