@@ -55,7 +55,7 @@ hal_col, auteurs_fr_col, auteurs_copub_col = "HalID", "Auteurs_FR", "Auteurs_cop
 ville_col, org_col, annee_col, equipe_col, centre_col, pays_col = "Ville", "Organisme_copubliant", "Année", "Equipe", "Centre", "Pays"
 
 # -------------------
-# Sidebar filtres (dépendances mutuelles)
+# Sidebar filtres (avec bouton Appliquer)
 # -------------------
 with st.sidebar:
     try:
@@ -67,7 +67,7 @@ with st.sidebar:
     st.markdown("### DATALAKE")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- Initialisation des clés dans la session ---
+    # --- Initialisation des clés ---
     for key in ["centres", "pays", "villes", "organismes", "annees", "equipes"]:
         if key not in st.session_state:
             if key == "villes":
@@ -75,65 +75,108 @@ with st.sidebar:
             else:
                 st.session_state[key] = []
 
-    # --- Fonction utilitaire pour filtrer selon les sélections courantes ---
-    def get_filtered_df():
-        tmp = df.copy()
-        if st.session_state.centres:
-            tmp = tmp[tmp[centre_col].isin(st.session_state.centres)]
-        if st.session_state.pays:
-            tmp = tmp[tmp[pays_col].isin(st.session_state.pays)]
-        if st.session_state.villes != "Toutes":
-            tmp = tmp[tmp[ville_col] == st.session_state.villes]
-        if st.session_state.organismes:
-            tmp = tmp[tmp[org_col].isin(st.session_state.organismes)]
-        if st.session_state.annees:
-            tmp = tmp[tmp[annee_col].isin(st.session_state.annees)]
-        if st.session_state.equipes:
-            tmp = tmp[tmp[equipe_col].isin(st.session_state.equipes)]
-        return tmp
+    # --- Calcul des options globales ---
+    centres_opts = sorted(df[centre_col].dropna().unique())  # centres restent toujours globaux
 
-    # --- Calcul des options dynamiques (selon filtres déjà appliqués) ---
-    tmp_df = get_filtered_df()
-    centres_opts = sorted(df[centre_col].dropna().unique())  # Centres restent globaux
-    pays_opts    = sorted(tmp_df[pays_col].dropna().unique())
-    villes_opts  = ["Toutes"] + sorted(tmp_df[ville_col].dropna().unique())
-    orgs_opts    = sorted(tmp_df[org_col].dropna().unique())
-    annees_opts  = sorted(tmp_df[annee_col].dropna().unique())
-    equipes_opts = sorted(tmp_df[equipe_col].dropna().unique())
+    # --- Bouton pour appliquer les filtres ---
+    apply = st.button("✅ Appliquer les filtres")
 
-    # --- Widgets de sélection ---
-    st.session_state.centres = st.multiselect(
+    # --- Multiselect + boutons utilitaires ---
+    # CENTRES
+    st.markdown("#### Centre")
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("Tout", key="centres_all"):
+            st.session_state.centres = centres_opts
+    with c2:
+        if st.button("Aucun", key="centres_none"):
+            st.session_state.centres = []
+
+    centres_sel = st.multiselect(
         "Centre",
         centres_opts,
         default=st.session_state.centres
     )
 
-    st.session_state.pays = st.multiselect(
+    # Filtrage intermédiaire pour calculer les autres options
+    tmp = df[df[centre_col].isin(centres_sel)] if centres_sel else df
+
+    # PAYS
+    pays_opts = sorted(tmp[pays_col].dropna().unique())
+    st.markdown("#### Pays")
+    p1, p2 = st.columns(2)
+    with p1:
+        if st.button("Tout", key="pays_all"):
+            st.session_state.pays = pays_opts
+    with p2:
+        if st.button("Aucun", key="pays_none"):
+            st.session_state.pays = []
+
+    pays_sel = st.multiselect(
         "Pays",
         pays_opts,
         default=[x for x in st.session_state.pays if x in pays_opts]
     )
 
-    st.session_state.villes = st.selectbox(
+    # VILLES
+    tmp2 = tmp[tmp[pays_col].isin(pays_sel)] if pays_sel else tmp
+    villes_opts = ["Toutes"] + sorted(tmp2[ville_col].dropna().unique())
+    st.markdown("#### Ville")
+    villes_sel = st.selectbox(
         "Ville",
         villes_opts,
         index=villes_opts.index(st.session_state.villes)
         if st.session_state.villes in villes_opts else 0
     )
 
-    st.session_state.organismes = st.multiselect(
+    # ORGANISMES
+    orgs_opts = sorted(tmp2[org_col].dropna().unique())
+    st.markdown("#### Organismes copubliants")
+    o1, o2 = st.columns(2)
+    with o1:
+        if st.button("Tout", key="orgs_all"):
+            st.session_state.organismes = orgs_opts
+    with o2:
+        if st.button("Aucun", key="orgs_none"):
+            st.session_state.organismes = []
+
+    orgs_sel = st.multiselect(
         "Organismes copubliants",
         orgs_opts,
         default=[x for x in st.session_state.organismes if x in orgs_opts]
     )
 
-    st.session_state.annees = st.multiselect(
+    # ANNEES
+    tmp3 = tmp2[tmp2[org_col].isin(orgs_sel)] if orgs_sel else tmp2
+    annees_opts = sorted(tmp3[annee_col].dropna().unique())
+    st.markdown("#### Années")
+    a1, a2 = st.columns(2)
+    with a1:
+        if st.button("Tout", key="annees_all"):
+            st.session_state.annees = annees_opts
+    with a2:
+        if st.button("Aucun", key="annees_none"):
+            st.session_state.annees = []
+
+    annees_sel = st.multiselect(
         "Années",
         annees_opts,
         default=[x for x in st.session_state.annees if x in annees_opts]
     )
 
-    st.session_state.equipes = st.multiselect(
+    # EQUIPES
+    tmp4 = tmp3[tmp3[annee_col].isin(annees_sel)] if annees_sel else tmp3
+    equipes_opts = sorted(tmp4[equipe_col].dropna().unique())
+    st.markdown("#### Équipes")
+    e1, e2 = st.columns(2)
+    with e1:
+        if st.button("Tout", key="equipes_all"):
+            st.session_state.equipes = equipes_opts
+    with e2:
+        if st.button("Aucun", key="equipes_none"):
+            st.session_state.equipes = []
+
+    equipes_sel = st.multiselect(
         "Équipes",
         equipes_opts,
         default=[x for x in st.session_state.equipes if x in equipes_opts]
@@ -146,9 +189,36 @@ with st.sidebar:
     )
 
 # -------------------
-# Filtrage final (DataFrame utilisé par le reste de l'app)
+# Filtrage final déclenché par le bouton
 # -------------------
+if apply:
+    st.session_state.centres = centres_sel
+    st.session_state.pays = pays_sel
+    st.session_state.villes = villes_sel
+    st.session_state.organismes = orgs_sel
+    st.session_state.annees = annees_sel
+    st.session_state.equipes = equipes_sel
+
+def get_filtered_df():
+    tmp = df.copy()
+    if st.session_state.centres:
+        tmp = tmp[tmp[centre_col].isin(st.session_state.centres)]
+    if st.session_state.pays:
+        tmp = tmp[tmp[pays_col].isin(st.session_state.pays)]
+    if st.session_state.villes != "Toutes":
+        tmp = tmp[tmp[ville_col] == st.session_state.villes]
+    if st.session_state.organismes:
+        tmp = tmp[tmp[org_col].isin(st.session_state.organismes)]
+    if st.session_state.annees:
+        tmp = tmp[tmp[annee_col].isin(st.session_state.annees)]
+    if st.session_state.equipes:
+        tmp = tmp[tmp[equipe_col].isin(st.session_state.equipes)]
+    return tmp
+
+# ⚡ DataFrame filtré (calculé seulement après clic sur « Appliquer »)
 df_filtered = get_filtered_df()
+
+
 
 # -------------------
 # Fonctions utiles
