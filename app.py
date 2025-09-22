@@ -150,24 +150,6 @@ with st.sidebar:
 # -------------------
 df_filtered = get_filtered_df()
 
-    
-# -------------------
-# Filtrage
-# -------------------
-get_filtered_df = df.copy()
-if centres:
-    df_filtered = df_filtered[df_filtered[centre_col].isin(centres)]
-if pays:
-    df_filtered = df_filtered[df_filtered[pays_col].isin(pays)]
-if villes != "Toutes":
-    df_filtered = df_filtered[df_filtered[ville_col] == villes]
-if organismes:
-    df_filtered = df_filtered[df_filtered[org_col].isin(organismes)]
-if annees:
-    df_filtered = df_filtered[df_filtered[annee_col].isin(annees)]
-if equipes:
-    df_filtered = df_filtered[df_filtered[equipe_col].isin(equipes)]
-
 # -------------------
 # Fonctions utiles
 # -------------------
