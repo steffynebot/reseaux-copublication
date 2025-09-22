@@ -63,23 +63,91 @@ with st.sidebar:
     except:
         st.caption("Logo manquant")
     
-    st.markdown("<br>", unsafe_allow_html=True)    #espace
+    st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("### DATALAKE")
     st.markdown("<br>", unsafe_allow_html=True)
-    centres = st.multiselect("Centre", sorted(df[centre_col].dropna().unique()))
-    pays = st.multiselect("Pays", sorted(df[pays_col].dropna().unique()))
-    villes = st.selectbox("Ville", ["Toutes"] + sorted(df[ville_col].dropna().unique()))
-    organismes = st.multiselect("Organismes copubliants", sorted(df[org_col].dropna().unique()))
-    annees = st.multiselect("Années", sorted(df[annee_col].dropna().unique()))
-    equipes = st.multiselect("Équipes", sorted(df[equipe_col].dropna().unique()))
+
+    # === 1. Variables d'état ===
+    # On commence par les sélections précédentes (ou vide au 1er run)
+    st.session_state.setdefault("centres", [])
+    st.session_state.setdefault("pays", [])
+    st.session_state.setdefault("villes", "Toutes")
+    st.session_state.setdefault("organismes", [])
+    st.session_state.setdefault("annees", [])
+    st.session_state.setdefault("equipes", [])
+
+    # === 2. Fonction utilitaire pour filtrer progressivement ===
+    def get_filtered_df():
+        tmp = df.copy()
+        if st.session_state.centres:
+            tmp = tmp[tmp[centre_col].isin(st.session_state.centres)]
+        if st.session_state.pays:
+            tmp = tmp[tmp[pays_col].isin(st.session_state.pays)]
+        if st.session_state.villes != "Toutes":
+            tmp = tmp[tmp[ville_col] == st.session_state.villes]
+        if st.session_state.organismes:
+            tmp = tmp[tmp[org_col].isin(st.session_state.organismes)]
+        if st.session_state.annees:
+            tmp = tmp[tmp[annee_col].isin(st.session_state.annees)]
+        if st.session_state.equipes:
+            tmp = tmp[tmp[equipe_col].isin(st.session_state.equipes)]
+        return tmp
+
+    # === 3. Calcul des options dynamiques ===
+    tmp_df = get_filtered_df()  # basé sur les choix actuels
+    centres_opts    = sorted(df[centre_col].dropna().unique())  # Centres toujours globaux
+    pays_opts       = sorted(tmp_df[pays_col].dropna().unique())
+    villes_opts     = ["Toutes"] + sorted(tmp_df[ville_col].dropna().unique())
+    orgs_opts       = sorted(tmp_df[org_col].dropna().unique())
+    annees_opts     = sorted(tmp_df[annee_col].dropna().unique())
+    equipes_opts    = sorted(tmp_df[equipe_col].dropna().unique())
+
+    # === 4. Widgets avec mise à jour de session_state ===
+    st.session_state.centres = st.multiselect(
+        "Centre",
+        centres_opts,
+        default=st.session_state.centres
+    )
+
+    st.session_state.pays = st.multiselect(
+        "Pays",
+        pays_opts,
+        default=st.session_state.pays
+    )
+
+    st.session_state.villes = st.selectbox(
+        "Ville",
+        villes_opts,
+        index=villes_opts.index(st.session_state.villes) if st.session_state.villes in villes_opts else 0
+    )
+
+    st.session_state.organismes = st.multiselect(
+        "Organismes copubliants",
+        orgs_opts,
+        default=[x for x in st.session_state.organismes if x in orgs_opts]
+    )
+
+    st.session_state.annees = st.multiselect(
+        "Années",
+        annees_opts,
+        default=[x for x in st.session_state.annees if x in annees_opts]
+    )
+
+    st.session_state.equipes = st.multiselect(
+        "Équipes",
+        equipes_opts,
+        default=[x for x in st.session_state.equipes if x in equipes_opts]
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Texte en bas du contenu des filtres
     st.caption(
         "Proposé par le groupe **DATALAKE** : Kumar Guha, Daniel Da Silva et Andréa Nebot  \n"
         "à la demande de Luigi Liquori et Maria Kazolea"
     )
+
+# === 5. DataFrame final filtré ===
+df_filtered = get_filtered_df()
+
     
 # -------------------
 # Filtrage
